@@ -14,7 +14,8 @@ The marketplace bundles, as **one installable plugin**:
 - **A SessionStart conventions hook** — injects the always-on CrossLoom conventions
   (mental model, environment, `cl`-first discipline) into every session.
 
-> **Status:** plugin **v0.4.0**. Requires the `crossloom-cli` wheel at **≥ 0.5.3**.
+> **Status:** plugin **v0.4.0**. Needs the `crossloom-cli` wheel at **≥ 0.5.3** — but install
+> **v0.6.0**: it is the first release whose `cl update` cannot brick a Windows install.
 
 ## This repo is public. The wheel repo is not.
 
@@ -40,7 +41,7 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
 2. **The `cl` wheel — installed with the `[ai]` extra:**
 
    ```
-   python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.5.3"
+   python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.0"
    ```
 
    **The `[ai]` extra is required** — it pulls the MCP SDK (`mcp`, `fastmcp`) that the
@@ -52,8 +53,8 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
    credential or no read grant on the wheel repo — ask your onboarder. There is no public
    wheel channel.
 
-> **⚠ If your wheel is below 0.5.3, do not run `cl update` on Windows — use the pip command
-> above to get to 0.5.3 first.**
+> **⚠ If your wheel is older than 0.6.0, do not run `cl update` on Windows — use the pip
+> command above to get to 0.6.0 first.**
 >
 > In wheels **before 0.5.3**, `cl update` bricked the install on Windows: `cl update` *is*
 > `cl.exe`, and Windows will not let a running executable be overwritten — so pip uninstalled
@@ -69,7 +70,7 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
 ### Check it in three lines — *before* you install the plugin
 
 ```
-cl --version                      # the wheel's console entry point is on PATH (want >= 0.5.3)
+cl --version                      # the wheel's console entry point is on PATH (want >= 0.6.0)
 python -c "import crossloom_cli"  # the package is importable
 python -c "import mcp, fastmcp"   # the [ai] extra is present — the MCP SDK the server needs
 ```
