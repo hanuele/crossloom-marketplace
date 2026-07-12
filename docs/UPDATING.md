@@ -172,23 +172,23 @@ seems frozen at an old version, run it.
 
 ### Train B — the wheel
 
-> ### ⚠ Older than 0.6.0? Do NOT use `cl update` to upgrade on Windows
+> ### ⚠ Older than 0.6.1? Do NOT use `cl update` to upgrade on Windows
 >
-> Before 0.5.3, `cl update` **was** `cl.exe` asking pip to overwrite the very executable that
+> Before 0.6.1, `cl update` **was** `cl.exe` asking pip to overwrite the very executable that
 > was running. Windows will not allow that — so pip uninstalled the old version, failed to
 > install the new one, and left you with **no `cl` at all** *and no way to retry, because the
 > command you would retry with is the one that just deleted itself.*
 >
-> **Fixed in 0.5.3:** `cl` now exits first and hands off to a worker that waits until the
+> **Fixed in 0.6.1:** `cl` now exits first and hands off to a worker that waits until the
 > executable is genuinely free, then runs pip in the same console so you still watch it live.
 >
 > **But the fix ships in the wheel it fixes — it cannot repair the wheel you are running.**
-> Use pip once to get to 0.6.0; after that `cl update` is safe.
+> Use pip once to get to 0.6.1; after that `cl update` is safe.
 
 **First upgrade — from a normal terminal, not from inside `cl`:**
 
 ```bash
-python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.0"
+python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.1"
 ```
 
 The **`[ai]` extra is not optional** — it pulls `mcp` and `fastmcp`, which the MCP server
@@ -197,7 +197,7 @@ imports at startup. Without it you get a working CLI and a silently dead server.
 This step **will** ask for GitHub credentials — the wheel repo is private. It is the only step
 that should.
 
-**Once you are on 0.6.0 or later**, the normal commands work:
+**Once you are on 0.6.1 or later**, the normal commands work:
 
 ```bash
 cl update              # check, then upgrade to the newest release tag
