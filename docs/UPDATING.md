@@ -172,7 +172,7 @@ seems frozen at an old version, run it.
 
 ### Train B — the wheel
 
-> ### ⚠ On a wheel below 0.5.3, `cl update` destroys the install on Windows
+> ### ⚠ Older than 0.6.0? Do NOT use `cl update` to upgrade on Windows
 >
 > Before 0.5.3, `cl update` **was** `cl.exe` asking pip to overwrite the very executable that
 > was running. Windows will not allow that — so pip uninstalled the old version, failed to
@@ -182,14 +182,13 @@ seems frozen at an old version, run it.
 > **Fixed in 0.5.3:** `cl` now exits first and hands off to a worker that waits until the
 > executable is genuinely free, then runs pip in the same console so you still watch it live.
 >
-> **But the fix cannot fix the wheel you have.** If you are below 0.5.3, your installed
-> `cl update` is still the one that bricks. Use pip once to get to 0.5.3; after that
-> `cl update` is safe.
+> **But the fix ships in the wheel it fixes — it cannot repair the wheel you are running.**
+> Use pip once to get to 0.6.0; after that `cl update` is safe.
 
 **First upgrade — from a normal terminal, not from inside `cl`:**
 
 ```bash
-python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.5.3"
+python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.0"
 ```
 
 The **`[ai]` extra is not optional** — it pulls `mcp` and `fastmcp`, which the MCP server
@@ -198,7 +197,7 @@ imports at startup. Without it you get a working CLI and a silently dead server.
 This step **will** ask for GitHub credentials — the wheel repo is private. It is the only step
 that should.
 
-**Once you are on 0.5.3 or later**, the normal commands work:
+**Once you are on 0.6.0 or later**, the normal commands work:
 
 ```bash
 cl update              # check, then upgrade to the newest release tag
