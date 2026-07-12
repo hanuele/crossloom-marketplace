@@ -1,57 +1,40 @@
 # Auto-update — owner release flow + dev managed-settings
 
-> # 🛑 ERRATUM 2026-07-12 — §2's managed-settings block DOES NOT WORK. Do not ship it.
+> ## RESOLVED 2026-07-12 — the marketplace is now **public**, and auto-update needs no credentials
 >
-> The `"source": {"source": "url", "url": "…/crossloom-marketplace.git"}` block below **cannot
-> fetch this marketplace, and never could.** Claude Code resolves the `url` form with an
-> **unauthenticated HTTP GET** — no git, no credentials. Against a **private** repo that is a
-> hard `404`.
+> For most of this plan's life there was **no working auto-update path to an external
+> developer**, and it failed *silently*: no update arrived and nothing said why. Two distinct
+> bugs, stacked, each hiding the one behind it:
 >
-> Measured 2026-07-12, same URL shape, unauthenticated — and reproduced in Claude Code's own
-> `/plugin` → `Errors` tab on a machine configured exactly as §2 says:
+> 1. **The repo was private.** `source: "github"` git-clones. On a machine with a GitHub SSH key
+>    it clones over SSH — which is why it worked for maintainers and for nobody else, since
+>    onboarded developers are issued HTTPS credentials and **not** SSH keys.
+> 2. **The `url` form was adopted to route around that, and it never could have worked.** The
+>    `url` source downloads **only `marketplace.json`** — so the manifest's *relative* plugin
+>    source (`./plugins/crossloom`) has nothing to resolve against. It is structurally incapable
+>    of serving this marketplace, for any repo, public or private.
 >
-> ```
-> 200   https://github.com/anthropics/claude-code.git          (a PUBLIC repo)
-> 404   https://github.com/hanuele/crossloom-marketplace.git   (ours — PRIVATE)
+> **The fix was to change the repo, not the transport.** `hanuele/crossloom-marketplace` is
+> public. `source: "github"` was always the right form: Claude Code probes whether SSH is
+> configured and, on a machine without a key, clones over **plain HTTPS** — which against a
+> public repo needs **no credentials at all**. Verified end-to-end on a machine with SSH forced
+> off, the credential helper emptied, and terminal prompts disabled.
 >
-> HTTP 404 error while downloading marketplace from
-> https://github.com/hanuele/crossloom-marketplace.git
-> ```
->
-> **How this shipped, named so it stops happening.** The probe that ratified this form (#249)
-> ran **`git clone https://…` by hand**, saw `exit 0`, and concluded the HTTPS URL was sound.
-> But **Claude Code never git-clones the `url` form — it HTTP-downloads it.** The probe verified
-> a mechanism the product does not use. That is the same error as the erratum below (*"a machine
-> with cached credentials clones a private repo silently too"*) wearing a different coat:
-> **both times, a hand-run command stood in for the product's real code path.**
-> *Test the path the product takes, not one that resembles it.*
->
-> ### The state of play
->
-> | Form | What Claude Code does | Against our PRIVATE repo |
-> |---|---|---|
-> | `source: "url"` | unauthenticated **HTTP GET** | ❌ `404`, always |
-> | `source: "github"` + `repo` | **git clone over SSH** | ✅ *only with a GitHub SSH key* |
->
-> Onboarded developers are issued **HTTPS** credentials and are **not** issued SSH keys. So for
-> a typical external dev **there is currently no working auto-update path**, and it fails
-> **silently** — no update arrives, nothing says why. (Observed live: an install with
-> `autoUpdate: true` that had not fetched since 29 June and never reported it.)
->
-> **Escalated, awaiting a decision:** make the marketplace **public** (then the `url` form works
-> with zero credentials, for everyone), or **issue SSH keys** to the dev cohort. Until that is
-> settled, do not hand §2's block to a developer — it will 404. Read the rest of this page as
-> the **intended design, not the shipping reality.**
+> **The lesson, because it cost four separate failures in one day:** the probe that ratified the
+> `url` form ran `git clone https://…` **by hand**, saw `exit 0`, and concluded the URL was
+> sound — but Claude Code never git-clones the `url` form. *A hand-run command stood in for the
+> product's real code path.* **Test the path the product takes, not one that resembles it.**
 
 > ## ⚠ SCOPE — this page covers the **plugin** only
 >
-> Everything below describes auto-update of the **`crossloom` plugin** (Skills, `CONVENTIONS.md`,
-> hooks, MCP *wiring*). It does **NOT** cover the **`crossloom-cli` wheel** — the `cl` CLI, the
-> MCP **tools** themselves, and the **ObjectType knowledge sheets**. The wheel is a **separate
-> train with no auto-update**: it moves only when the developer runs **`cl update`**.
+> Everything below describes auto-update of the **`crossloom` plugin** — the Skills, the
+> **ObjectType knowledge sheets**, `CONVENTIONS.md`, the hooks, and the MCP *wiring*. It does
+> **NOT** cover the **`crossloom-cli` wheel** — the `cl` CLI and the MCP **tools** themselves.
+> The wheel is a **separate train with no auto-update**: it moves only when a developer upgrades
+> it by hand.
 >
-> A reader who takes this page as the whole update story will conclude that a corrected
-> cheat-sheet reaches every dev automatically. **It does not.**
+> (The knowledge sheets moved onto *this* train in plugin 0.3.0. Before that they rode the wheel,
+> which meant a corrected cheat-sheet could not reach a developer automatically at all.)
 >
 > **→ For what-updates-what across BOTH trains, read [`UPDATING.md`](./UPDATING.md) first.**
 
@@ -142,7 +125,7 @@ The block (see [`managed-settings.example.json`](./managed-settings.example.json
 {
   "extraKnownMarketplaces": {
     "crossloom": {
-      "source": { "source": "url", "url": "https://github.com/hanuele/crossloom-marketplace.git" },
+      "source": { "source": "github", "repo": "hanuele/crossloom-marketplace" },
       "autoUpdate": true
     }
   }
@@ -152,36 +135,29 @@ The block (see [`managed-settings.example.json`](./managed-settings.example.json
 This both **declares** the marketplace (so the dev doesn't run `/plugin marketplace add`) and
 turns on **silent startup auto-update** for it.
 
-> **Use the explicit `url` `.git` form — NOT `github`+`repo` (verified 2026-07-07, task #249).**
-> The `{ "source": "github", "repo": "hanuele/crossloom-marketplace" }` shorthand does **not**
-> reliably clone over HTTPS: the transport is machine-dependent, and on a fresh Windows machine
-> with HTTPS/GCM credentials but **no GitHub SSH key** it resolved to an **SSH** clone
-> (`git@github.com:…`) and failed with `No ED25519 host key is known for github.com … Host key
-> verification failed` — the same blocker an external dev hit on the interactive path. The
-> explicit `url` `https://…​.git` form clones over **HTTPS** (no SSH key needed) and — because it
-> is a `.git` clone URL, not a raw `marketplace.json` URL — still resolves the marketplace's
-> relative plugin source (`./plugins/crossloom`). Evidence:
-> `vault/docs/plans/crossloom-external-onboarding/L2-249-transport-evidence-2026-07-07.md`.
+> **Use `source: "github"` + `repo`. It needs no credentials, and it is the only form that can
+> work here.**
 >
-> **ERRATUM (2026-07-12) — this repo is PRIVATE, and auto-update needs credentials.**
-> An earlier revision of this paragraph said the HTTPS form works because *"the repo is public,
-> so it needs no credentials at all."* **That was false.** `hanuele/crossloom-marketplace` is
-> **private**: unauthenticated it returns `404` (API) / `401` (git clone endpoint). The original
-> probe cloned successfully on a machine that already held cached GCM credentials and read the
-> **absence of a credential prompt** as proof the repo was public — it is not; a machine with
-> cached creds clones a private repo silently too. **Ask the repo, not the clone.**
+> - **It git-clones**, which is what makes the manifest's *relative* plugin source
+>   (`./plugins/crossloom`) resolve. The alternative `url` form downloads **only
+>   `marketplace.json`** and nothing else, so the relative source has nothing to resolve
+>   against — it cannot serve this marketplace at all, for any repo.
+> - **It does not require an SSH key.** Claude Code probes whether SSH to GitHub authenticates;
+>   on a machine without a key it logs *"SSH not configured, cloning via HTTPS"* and clones over
+>   plain HTTPS — and against a **public** repo that needs no credentials whatsoever. (It also
+>   falls back the other way if the preferred transport fails.) Force the HTTPS branch
+>   explicitly with `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` — useful for *testing* the path a
+>   key-less developer will actually take, from a machine that has a key.
 >
-> The fix itself is unchanged and still correct — HTTPS is right precisely because onboarded devs
-> **are** issued GitHub HTTPS credentials and are **not** issued SSH keys. But note the real
-> dependency: **plugin auto-update cannot fetch until the dev has GitHub read access** (the
-> runbook's GitHub-credentials step), and if those credentials are absent or expired it fails
-> **silently** — no update arrives and nothing says why. Order the onboarding accordingly:
-> credentials **before** the managed-settings marketplace declaration. See
-> [`UPDATING.md`](./UPDATING.md) for the full two-train picture.
-> Note (Claude Code does NOT normalize URL identity): the `url` form is a *different*
-> marketplace identity than the old `github`+`repo` one, so on a machine that already carried
-> the shorthand both may coexist — irrelevant for a fresh dev-cohort onboarding, where only this form
-> is declared.
+> **`autoUpdate` is not on by default and `marketplace add` does not write it.** Third-party
+> marketplaces do not auto-update without it. Omit the flag and the plugin installs once, never
+> moves again, and goes on reporting itself as healthy — which is precisely the failure this
+> whole page exists to prevent.
+>
+> **Marketplace identity is not normalized.** A machine that already carries a *different*
+> source form for `crossloom` will end up with **both** entries coexisting rather than the new
+> one replacing the old — and the stale one shows up as an error at every launch. When changing
+> the form on an existing machine, replace the entry; don't add beside it.
 
 ## 3. What the dev sees when an update ships
 

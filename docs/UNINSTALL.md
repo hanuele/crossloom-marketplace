@@ -83,7 +83,7 @@ install). After this, `cl --version` will fail until re-installed.
 |---|---|---|
 | 1 | `cl env reset` | `cl env add` + `cl env use` — **and** the keyring password `cl env remove` leaves behind |
 | 2 | `/plugin uninstall crossloom@crossloom` | `/plugin install crossloom@crossloom` |
-| 3 | `/plugin marketplace remove hanuele/crossloom-marketplace` | `/plugin marketplace add https://github.com/hanuele/crossloom-marketplace.git` (explicit HTTPS `.git` URL — the `owner/repo` shorthand can resolve to an SSH clone and fail without a GitHub SSH key) |
+| 3 | `/plugin marketplace remove hanuele/crossloom-marketplace` | `/plugin marketplace add hanuele/crossloom-marketplace` (the marketplace repo is public — this needs no credentials and no SSH key) |
 | 4 | `pip uninstall crossloom-cli` | `pip install "crossloom-cli[ai] @ git+…"` |
 
 ## Credential safety

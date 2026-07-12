@@ -1,10 +1,15 @@
 {
-  "//": "Managed-settings snippet to push to an external dev's machine to enable SILENT auto-update of the CrossLoom plugin. Place in the ClaudeCode managed-settings file (Windows: C:\\Program Files\\ClaudeCode\\managed-settings.json). MERGE the extraKnownMarketplaces key if the file already holds other managed settings. See docs/AUTO-UPDATE.md.",
-  "//source": "Use the explicit url + .git form, NOT the github+repo shorthand: the shorthand resolves to an SSH clone on a fresh Windows machine with no GitHub SSH key and dies on 'Host key verification failed' (verified task #249, 2026-07-07). The .git clone URL keeps the marketplace's relative plugin source resolving.",
+  "//": "Managed-settings snippet to push to a developer's machine: it DECLARES the CrossLoom marketplace (so the dev never runs /plugin marketplace add) and turns on SILENT auto-update. Place in the ClaudeCode managed-settings file (Windows: C:\\Program Files\\ClaudeCode\\managed-settings.json — the admin must create that directory and file; it is not auto-created). MERGE the extraKnownMarketplaces key if the file already holds other managed settings. See docs/AUTO-UPDATE.md.",
+  "//source": "Use source=github + repo. It git-CLONES, which is what makes the manifest's relative plugin source (./plugins/crossloom) resolve — the 'url' form downloads ONLY marketplace.json and nothing else, so it can never serve this marketplace, public or private. It needs NO credentials: this marketplace repo is public, and on a machine with no GitHub SSH key Claude Code logs 'SSH not configured, cloning via HTTPS' and clones over plain HTTPS. Verified 2026-07-12 end-to-end with SSH disabled, the git credential helper emptied, and terminal prompts off.",
+  "//autoUpdate": "NOT the default, and NOT written by 'marketplace add'. Without it the plugin installs once and then never moves again — while continuing to report itself as perfectly healthy. This flag is the whole point of this file.",
+  "//identity": "Marketplace identity is not normalized. On a machine that already carries a DIFFERENT source form for 'crossloom', this entry will COEXIST with the old one rather than replace it, and the stale one errors at every launch. Replace the existing entry; do not add beside it.",
   "extraKnownMarketplaces": {
     "crossloom": {
-      "source": { "source": "url", "url": "https://github.com/hanuele/crossloom-marketplace.git" },
+      "source": { "source": "github", "repo": "hanuele/crossloom-marketplace" },
       "autoUpdate": true
     }
+  },
+  "enabledPlugins": {
+    "crossloom@crossloom": true
   }
 }

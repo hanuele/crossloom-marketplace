@@ -9,144 +9,150 @@ The marketplace bundles, as **one installable plugin**:
 - **MCP tools** — actions against a live CrossLoom instance (the `cl`/MCP surface).
 - **Auto-firing skills** — CrossLoom knowledge (conventions, per-ObjectType cheat-sheets)
   that the agent surfaces *unprompted*, with no `@`-mention required.
+- **The 20 ObjectType knowledge sheets**, shipped *inside* the plugin — so a corrected
+  cheat-sheet reaches you at your next session with nothing to run.
 - **A SessionStart conventions hook** — injects the always-on CrossLoom conventions
   (mental model, environment, `cl`-first discipline) into every session.
 
-> **Status:** shipping real content as **v0.2.2** — the CrossLoom MCP server, three auto-firing
-> knowledge Skills (ObjectType cheat-sheets, first-contact orientation, and the `connect`
-> first-run connection/env setup), and the SessionStart
-> conventions hook are all live in the plugin. (Marketplace **auto-update** config is wired in
-> **L2-02**; there are no invariant/quality hooks — the portable subset is empty, per L2-05.)
+> **Status:** plugin **v0.4.0**. Requires the `crossloom-cli` wheel at **≥ 0.5.3**.
 
-## Before you install — prerequisite (R0): GitHub access + git credentials
+## This repo is public. The wheel repo is not.
 
-This marketplace repo AND the `crossloom-cli` wheel repo are **private**. Installing the
-wheel, adding the marketplace, and every later `cl update` / marketplace refresh all ride
-your git credentials. Before anything else:
+**This marketplace is a public repo**, so Claude Code fetches it with **no credentials at
+all** — no SSH key, no token, no login. That is deliberate: the marketplace auto-updates
+silently in the background, and a channel that needs credentials is a channel that
+silently stops working for whoever lacks them.
 
-1. **GitHub read access** to `hanuele/crossloom-cli` and `hanuele/crossloom-marketplace`
-   — granted by your onboarder / repo admin (no self-service path).
-2. **Working git credentials on your machine.** Verify + set up in one command, in an
-   **interactive** terminal (Git Credential Manager can only prompt interactively):
+**`hanuele/crossloom-cli` (the wheel) is still private**, and installing it *does* need
+your GitHub credentials. So exactly one step in this README will ask you to log in: the
+`pip install`. If any *other* step asks for credentials, something is wrong — say so.
+
+Nothing sensitive lives here: no hostnames, no customer names, no credentials. Keep it
+that way. Before you push anything to this repo, ask whether you would be comfortable with
+a stranger reading it, because they can.
+
+## Prerequisite — Python + the `cl` wheel
+
+The bundled MCP server is a **stdio Python process**: the plugin ships its *configuration*,
+**not the runtime**. Two things must be on the machine before the plugin can do anything:
+
+1. **Python ≥ 3.11** (pinned by `crossloom-cli`'s `pyproject.toml`).
+2. **The `cl` wheel — installed with the `[ai]` extra:**
 
    ```
-   git ls-remote https://github.com/hanuele/crossloom-cli.git
+   python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.5.3"
    ```
 
-   A list of refs = PASS. `fatal: could not read Username for 'https://github.com'` =
-   no stored credential and no way to prompt — re-run in an interactive terminal so GCM
-   can sign you in. `remote: Repository not found.` = signed in, but the read grant is
-   missing (GitHub masks private repos you can't see) — ask your onboarder.
+   **The `[ai]` extra is required** — it pulls the MCP SDK (`mcp`, `fastmcp`) that the
+   server imports at startup. A plain `crossloom-cli` install gives you a working CLI and a
+   **silently dead MCP server** (it exits on the missing import).
 
-The full walked step (PAT fallback for headless setups included) is Step 0.5 of the
-unified install runbook your onboarder works from.
+   This is the step that rides your GitHub credentials. If `pip` fails with
+   `could not read Username`, a 403, or `Repository not found`, you either have no stored
+   credential or no read grant on the wheel repo — ask your onboarder. There is no public
+   wheel channel.
 
-## Before you install — prerequisite (R1): Python + the `cl` wheel
+> **⚠ Do not run `cl update` on Windows.** It uninstalls the wheel and then fails to
+> install the replacement, because `cl update` *is* `cl.exe` and Windows will not let a
+> running executable be overwritten — leaving you with no `cl` and no way to retry. Use the
+> `python -m pip install --upgrade …` command above instead, from a normal terminal. A fix
+> is in progress. If a session-start message tells you to run `cl update`, ignore it for now.
 
-The bundled MCP server is a **stdio Python process**: the plugin ships its *configuration*
-(`.mcp.json` runs `python -m crossloom_cli.mcp.server`), **not the runtime**. Two things must
-already be on the machine before the plugin can do anything:
-
-1. **Python >= 3.11** on `PATH` as `python` — the interpreter the MCP server runs under
-   (pinned by `crossloom-cli`'s `pyproject.toml`: `requires-python = ">=3.11"`).
-2. **The `cl` wheel — installed with the `[ai]` extra — into that same Python:**
-   `pip install "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git"`
-   (or the distributed wheel). **The `[ai]` extra is required** — it pulls the MCP SDK
-   (`mcp`, `fastmcp`) the server imports at startup; a plain `crossloom-cli` install gives you
-   a working CLI but a **silently dead MCP server** (it exits on the missing import). The
-   `git+` form rides your GitHub access + git credentials — if `pip` fails with
-   `could not read Username`, a 403, or `Repository not found`, walk the
-   [GitHub-access prerequisite (R0) above](#before-you-install--prerequisite-r0-github-access--git-credentials)
-   before retrying; there is no public wheel channel (the repo is private by decision).
-
-### Check it in one line — *before* you install the plugin
+### Check it in three lines — *before* you install the plugin
 
 ```
-cl --version                      # proves the wheel's console entry point is on PATH
-python -c "import crossloom_cli"  # proves the MCP's interpreter can import the package
-python -c "import mcp, fastmcp"   # proves the [ai] extra is present — the MCP SDK the server needs
+cl --version                      # the wheel's console entry point is on PATH (want >= 0.5.3)
+python -c "import crossloom_cli"  # the package is importable
+python -c "import mcp, fastmcp"   # the [ai] extra is present — the MCP SDK the server needs
 ```
 
-All three should succeed — note the second and third commands print **nothing** and exit 0 on
-success (no output *is* the pass; an `ImportError` traceback is the failure). The checks matter
-because the MCP server runs under **`python`** specifically: if `cl` was installed into a
-*different* environment (a venv, pipx, a second Python), `cl --version` can pass while
-`python -c "import crossloom_cli"` fails — and the MCP server is dead even though the CLI works.
-The **third** check is the one that catches the most common silent failure: `crossloom-cli`
-installed **without `[ai]`**, so `import crossloom_cli` passes but `import mcp, fastmcp` fails —
-again a dead MCP server behind a working CLI.
+All three should succeed. The second and third print **nothing** and exit 0 on success — no
+output *is* the pass; an `ImportError` traceback is the failure. The third is the one that
+catches the most common silent failure: `crossloom-cli` installed **without `[ai]`**, so the
+CLI works while the MCP server is dead.
 
-### Failure symptom — what a missing prerequisite looks like
+> **Why the plugin no longer names an interpreter.** `.mcp.json` spawns **`cl mcp serve`**,
+> not `python -m …`. `cl` is a pip-baked console script, so it always runs the Python that
+> actually has the wheel — which is correct by construction, on every platform and on
+> machines with several Pythons. (Naming `python` broke macOS entirely, where no such
+> binary exists; naming `python3` breaks Windows, where it resolves to a 0-byte Store stub.
+> There is no interpreter name that is right on both, so the plugin names none.)
 
-The plugin installs fine and the `crossloom` MCP server *appears* in your config, **but its
-tools error or are absent** and the agent can't call any CrossLoom action. Under the hood
-`python -m crossloom_cli.mcp.server` exited immediately — no `python` on `PATH`, Python below
-3.11, or `crossloom_cli` not importable by that interpreter. If CrossLoom tools are silently
-missing after install, re-run the two checks above; this prerequisite is the usual cause.
-(On Windows, beware the Microsoft Store `python` shim — it can satisfy `python --version`
-yet not run the server; the `import crossloom_cli` check above catches that case.)
-
-The **SessionStart conventions hook also shells `python`** (`hooks/emit_conventions.py`), so an
-unmet prerequisite *also* silently drops the always-on CrossLoom conventions — not just the MCP
-tools. Both surfaces share the same Python requirement; the two checks above cover both.
-
-> **Cache-copy note (R1):** the manifest invokes the server by **module**
-> (`python -m crossloom_cli.mcp.server`), resolved from the installed package on `sys.path` —
-> *not* by a relative (`../`) file path. So the reference stays valid when Claude Code copies
-> the plugin into its cache; there is no relative path to break.
-
-## For an external developer — install in three steps
+## Install — three steps
 
 In any Claude Code session:
 
 ```
-/plugin marketplace add https://github.com/hanuele/crossloom-marketplace.git
+/plugin marketplace add hanuele/crossloom-marketplace
 /plugin install crossloom@crossloom
 /reload-plugins
 ```
 
-- **`/plugin marketplace add https://github.com/hanuele/crossloom-marketplace.git`** —
-  registers this marketplace (Git-hosted; refresh later with `/plugin marketplace update`).
-  **Use this explicit HTTPS `.git` URL, not the `owner/repo` shorthand** — the shorthand can
-  resolve to an SSH clone and fail with `No ED25519 host key is known for github.com` on a
-  machine without a GitHub SSH key. The HTTPS URL rides the same private-git credentials as
-  the wheel install (see R0) — a failure here means the R0 prerequisite above isn't met. (The
-  `.git` suffix matters: a `…/marketplace.json` URL would break the plugin's relative sources.)
-- **`/plugin install crossloom@crossloom`** — installs the `crossloom` plugin from the
-  `crossloom` marketplace.
-- **`/reload-plugins`** — activates it in the current session.
+You should see `Cloning via HTTPS` and **no credential prompt**. Then **restart Claude Code
+and run `/reload-plugins`** — a restart alone has proven not to be enough.
 
-> **Prerequisite:** these three commands assume **Python >= 3.11 and the `cl` wheel are
-> already installed** — see [the prerequisite section above](#before-you-install--prerequisite-r1-python--the-cl-wheel) and run its one-line check first. Without it the MCP server installs but its tools are silently dead.
+Already have it installed, from before this repo went public?
+
+```
+/plugin marketplace update crossloom
+```
+
+You will see `Found stale directory, cleaning up and re-cloning…`. That is expected: the
+repo was republished, so an old clone cannot be fast-forwarded and Claude Code replaces it.
+
+## Turn auto-update on — it is not on by default
+
+Add `"autoUpdate": true` to your Claude Code settings (`~/.claude/settings.json`):
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "crossloom": {
+      "source": { "source": "github", "repo": "hanuele/crossloom-marketplace" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": { "crossloom@crossloom": true }
+}
+```
+
+**Adding the marketplace does not set this**, and third-party marketplaces do not
+auto-update without it. Omit it and the plugin installs once, freezes forever, and goes on
+reporting itself as perfectly healthy.
 
 ## Updating — the two trains
 
-CrossLoom reaches you over **two independent trains**, and **plugin auto-update only moves one
-of them**:
+CrossLoom reaches you over **two independent trains**:
 
 | | ships | updated by |
 |---|---|---|
-| **Wheel** (`crossloom-cli`) | the `cl` CLI, the MCP **tools**, the **ObjectType knowledge sheets** | **`cl update`** — you run it |
-| **Plugin** (`crossloom@crossloom`) | the Skills, `CONVENTIONS.md`, hooks, MCP *wiring* | **automatic** at launch (if enabled) |
+| **Plugin** (`crossloom@crossloom`) | the Skills, **the 20 ObjectType knowledge sheets**, `CONVENTIONS.md`, hooks, MCP *wiring* | **automatic** at launch (with `autoUpdate`) |
+| **Wheel** (`crossloom-cli`) | the `cl` CLI, the MCP **tools** — the runtime | **manual** — only when a new floor is announced |
 
-> **The plugin ships the map; the wheel ships the territory.** Turning on auto-update refreshes
-> the map — it does **not** move the territory. A corrected cheat-sheet does **not** reach you
-> until you run `cl update`; a session-start nudge tells you when you are behind the floor.
+**The knowledge sheets moved from the wheel to the plugin.** That is the point of the
+0.4.0 release: they used to ride the train that only moves when a human remembers to move
+it, so a gotcha we learned on a Tuesday could sit undelivered for months. Now it is in your
+next session.
 
-**→ Read [`docs/UPDATING.md`](docs/UPDATING.md)** for exactly what each train carries, what
-auto-update does and does not deliver, and how to check which versions you are on.
+**→ [`docs/UPDATING.md`](docs/UPDATING.md)** — what each train carries and how to check
+which versions you are on. **→ [`docs/AUTO-UPDATE.md`](docs/AUTO-UPDATE.md)** — the owner's
+release flow.
 
 ## Versioning & pinning
 
 Each plugin entry in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)
-carries a `version` field. Plugin sources additionally support Git `ref` (branch/tag) and
-`sha` (exact commit) pinning. **The version controls the update flow:** Claude Code resolves a
-plugin's version as `plugin.json` → marketplace entry → git SHA (first present wins), and
-auto-update pulls a new version only when that string is **bumped** — so we keep the pin and
-bump it for controlled releases. Silent auto-update is enabled per-machine via managed settings
-(`extraKnownMarketplaces.<name>.autoUpdate: true`), **not** a `marketplace.json` field. Full
-owner + dev flow: [`docs/AUTO-UPDATE.md`](docs/AUTO-UPDATE.md) (**plugin train only** — see
-`docs/UPDATING.md` for both).
+carries a `version`. **Auto-update fires only when that string is bumped**, and Claude Code
+reads it from the **marketplace entry** — so `plugin.json` and `marketplace.json` must agree
+or a release silently never ships. CI enforces that they agree.
+
+## The knowledge sheets are a build artifact — do not edit them here
+
+`plugins/crossloom/skills/objects/knowledge/` is a **generated mirror** of
+`src/crossloom_cli/knowledge/` in the wheel repo. Edit a sheet **there**; a bot opens the
+mirror PR here automatically. A hand-edit here would work right up until the next sync
+silently reverted it — and in the meantime the plugin and the wheel would teach two
+different things. CI re-hashes every sheet against the shipped `.manifest.json` and fails on
+any local modification.
 
 ## Layout
 
@@ -155,18 +161,20 @@ crossloom-marketplace/
   .claude-plugin/
     marketplace.json     # marketplace manifest (name, owner, plugins[])
   plugins/
-    crossloom/           # the one plugin (MCP + Skills + conventions hook; v0.2.2)
+    crossloom/           # the one plugin (MCP + Skills + sheets + conventions hook)
+  scripts/
+    verify_knowledge_mirror.py
+  docs/
   README.md
 ```
 
 ## Portability
 
-Hosted under `hanuele` to start. The manifest uses **relative** plugin sources
-(`./plugins/crossloom`), which resolve only when the marketplace is added **via Git**
-(not via a raw URL to `marketplace.json`). Moving to a 3TXpert org later is a remote
-change (new origin), not a rebuild — keep the repo name and internal structure stable.
+The manifest uses **relative** plugin sources (`./plugins/crossloom`), which resolve only
+when the marketplace is added **as a git repo** — not via a raw URL to `marketplace.json`,
+which downloads that one file and nothing else. Moving to a 3TXpert org later is a remote
+change, not a rebuild — keep the repo name and internal structure stable.
 
 ---
 
-*Part of the [CrossLoom External-Dev Onboarding](https://github.com/hanuele) plan
-(one-plugin distribution).*
+*Part of the CrossLoom External-Dev Onboarding plan (one-plugin distribution).*
