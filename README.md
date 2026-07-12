@@ -52,11 +52,19 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
    credential or no read grant on the wheel repo — ask your onboarder. There is no public
    wheel channel.
 
-> **⚠ Do not run `cl update` on Windows.** It uninstalls the wheel and then fails to
-> install the replacement, because `cl update` *is* `cl.exe` and Windows will not let a
-> running executable be overwritten — leaving you with no `cl` and no way to retry. Use the
-> `python -m pip install --upgrade …` command above instead, from a normal terminal. A fix
-> is in progress. If a session-start message tells you to run `cl update`, ignore it for now.
+> **⚠ If your wheel is below 0.5.3, do not run `cl update` on Windows — use the pip command
+> above to get to 0.5.3 first.**
+>
+> In wheels **before 0.5.3**, `cl update` bricked the install on Windows: `cl update` *is*
+> `cl.exe`, and Windows will not let a running executable be overwritten — so pip uninstalled
+> the old wheel, failed to install the new one, and left you with **no `cl` and no way to
+> retry**. **Fixed in 0.5.3** (`cl` now exits first and hands off to a worker that waits for
+> the lock to clear). But the fix only helps you *once you are on it* — and the only way to
+> get there from an older wheel is the pip command above.
+>
+> **Already bricked?** The same pip command repairs it. If you also see a
+> `~rossloom_cli-*.dist-info` folder in `site-packages`, delete it — it is debris from the
+> torn uninstall.
 
 ### Check it in three lines — *before* you install the plugin
 

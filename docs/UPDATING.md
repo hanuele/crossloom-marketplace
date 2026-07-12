@@ -172,16 +172,21 @@ seems frozen at an old version, run it.
 
 ### Train B — the wheel
 
-> ### ⚠ Do not run `cl update` on Windows — it will destroy your installation
+> ### ⚠ On a wheel below 0.5.3, `cl update` destroys the install on Windows
 >
-> `cl update` **is** `cl.exe`. It asks pip to overwrite the very executable that is running,
-> and Windows will not allow that — so pip uninstalls the old version, fails to install the
-> new one, and leaves you with **no `cl` at all** *and no way to retry, because the command you
-> would retry with is the one that just deleted itself.* Reproduced; a fix is in progress.
+> Before 0.5.3, `cl update` **was** `cl.exe` asking pip to overwrite the very executable that
+> was running. Windows will not allow that — so pip uninstalled the old version, failed to
+> install the new one, and left you with **no `cl` at all** *and no way to retry, because the
+> command you would retry with is the one that just deleted itself.*
 >
-> **If a session-start message tells you to run `cl update`, ignore it for now.**
+> **Fixed in 0.5.3:** `cl` now exits first and hands off to a worker that waits until the
+> executable is genuinely free, then runs pip in the same console so you still watch it live.
+>
+> **But the fix cannot fix the wheel you have.** If you are below 0.5.3, your installed
+> `cl update` is still the one that bricks. Use pip once to get to 0.5.3; after that
+> `cl update` is safe.
 
-Upgrade from a **normal terminal** instead — not from inside `cl`:
+**First upgrade — from a normal terminal, not from inside `cl`:**
 
 ```bash
 python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.5.3"
@@ -190,12 +195,20 @@ python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanu
 The **`[ai]` extra is not optional** — it pulls `mcp` and `fastmcp`, which the MCP server
 imports at startup. Without it you get a working CLI and a silently dead server.
 
-This step **will** ask for GitHub credentials — the wheel repo is private. That is the only
-step that should.
+This step **will** ask for GitHub credentials — the wheel repo is private. It is the only step
+that should.
 
-**Already bricked** (ran `cl update` before reading this)? The same command repairs it. If you
-also see a `~rossloom_cli-*.dist-info` folder in `site-packages`, delete it — it is debris from
-the torn uninstall.
+**Once you are on 0.5.3 or later**, the normal commands work:
+
+```bash
+cl update              # check, then upgrade to the newest release tag
+cl update --check      # report installed-vs-latest, change nothing
+cl update --dry-run    # print the exact pip command without running it
+```
+
+**Already bricked** (ran the old `cl update`)? The pip command above repairs it. If you also
+see a `~rossloom_cli-*.dist-info` folder in `site-packages`, delete it — that is pip's own
+rollback staging, stranded by the same lock.
 
 ---
 
