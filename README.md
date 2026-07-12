@@ -96,8 +96,20 @@ In any Claude Code session:
 /reload-plugins
 ```
 
-You should see `Cloning via HTTPS` and **no credential prompt**. Then **restart Claude Code
-and run `/reload-plugins`** — a restart alone has proven not to be enough.
+**Both of these are success**, and which one you get depends only on whether *you* happen to
+have a GitHub SSH key:
+
+```
+SSH not configured, cloning via HTTPS: https://github.com/...   ← no key (most developers)
+Cloning via SSH: git@github.com:...                             ← you have a key
+```
+
+Claude Code probes whether SSH authenticates and picks accordingly — and falls back to the
+other transport if the first fails. The repo is public, so **neither path asks you for
+credentials.** A credential *prompt* is the thing to report; the transport name is not.
+
+Then **restart Claude Code and run `/reload-plugins`** — a restart alone has proven not to be
+enough.
 
 Already have it installed, from before this repo went public?
 
