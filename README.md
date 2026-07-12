@@ -15,7 +15,8 @@ The marketplace bundles, as **one installable plugin**:
   (mental model, environment, `cl`-first discipline) into every session.
 
 > **Status:** plugin **v0.4.0**. Needs the `crossloom-cli` wheel at **≥ 0.5.3** — but install
-> **v0.6.0**: it is the first release whose `cl update` cannot brick a Windows install.
+> **v0.6.1**: it is the first release whose `cl update` cannot brick a Windows install.
+> (0.5.3 and 0.6.0 *claimed* to fix that. They only fixed it inside a virtualenv.)
 
 ## This repo is public. The wheel repo is not.
 
@@ -41,7 +42,7 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
 2. **The `cl` wheel — installed with the `[ai]` extra:**
 
    ```
-   python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.0"
+   python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.1"
    ```
 
    **The `[ai]` extra is required** — it pulls the MCP SDK (`mcp`, `fastmcp`) that the
@@ -53,15 +54,22 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
    credential or no read grant on the wheel repo — ask your onboarder. There is no public
    wheel channel.
 
-> **⚠ If your wheel is older than 0.6.0, do not run `cl update` on Windows — use the pip
-> command above to get to 0.6.0 first.**
+> **⚠ If your wheel is older than 0.6.1, do not run `cl update` on Windows — use the pip
+> command above to get to 0.6.1 first.**
 >
-> In wheels **before 0.5.3**, `cl update` bricked the install on Windows: `cl update` *is*
+> In wheels **before 0.6.1**, `cl update` bricked the install on Windows: `cl update` *is*
 > `cl.exe`, and Windows will not let a running executable be overwritten — so pip uninstalled
 > the old wheel, failed to install the new one, and left you with **no `cl` and no way to
-> retry**. **Fixed in 0.5.3** (`cl` now exits first and hands off to a worker that waits for
+> retry**. **Fixed in 0.6.1** (`cl` now exits first and hands off to a worker that waits for
 > the lock to clear). But the fix only helps you *once you are on it* — and the only way to
 > get there from an older wheel is the pip command above.
+>
+> **Why 0.6.1 and not 0.5.3, which announced this same fix?** Because 0.5.3's guard looked
+> for `cl.exe` next to `python.exe` — true in a virtualenv, false on a normal Windows Python,
+> where the scripts live one directory down. It found nothing, reported *nothing is locked*,
+> and ran pip anyway. It bricked a real machine that way, on the build that was supposed to
+> protect it. 0.6.1 asks pip's own record of installed files instead of guessing, and
+> **refuses** rather than proceed when it cannot tell.
 >
 > **Already bricked?** The same pip command repairs it. If you also see a
 > `~rossloom_cli-*.dist-info` folder in `site-packages`, delete it — it is debris from the
@@ -70,7 +78,7 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
 ### Check it in three lines — *before* you install the plugin
 
 ```
-cl --version                      # the wheel's console entry point is on PATH (want >= 0.6.0)
+cl --version                      # the wheel's console entry point is on PATH (want >= 0.6.1)
 python -c "import crossloom_cli"  # the package is importable
 python -c "import mcp, fastmcp"   # the [ai] extra is present — the MCP SDK the server needs
 ```
