@@ -1,0 +1,15 @@
+{
+  "name": "crossloom",
+  "description": "CrossLoom developer toolkit for external 3TXpert developers — MCP tools, auto-firing knowledge Skills, and a SessionStart conventions hook, distributed as one Claude Code plugin.",
+  "owner": {
+    "name": "hanuele"
+  },
+  "plugins": [
+    {
+      "name": "crossloom",
+      "source": "./plugins/crossloom",
+      "description": "CrossLoom integration-platform toolkit for external 3TXpert developers: MCP server (actions), auto-firing knowledge Skills, and a SessionStart conventions hook. Requires Python + the crossloom-cli wheel.",
+      "version": "0.4.0"
+    }
+  ]
+}

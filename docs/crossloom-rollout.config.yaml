@@ -1,0 +1,27 @@
+# crossloom-rollout.config.yaml — cohort-level onboarding values
+#
+# Filled once by the admin/steward per cohort BEFORE rollout. At runtime the
+# dev's live `cl env` remains the source of truth for their instance values
+# (M1, ratified 2026-06-30); this file supplies the non-per-dev parameters the
+# install runbook reads, plus a one-screen "your cohort values" card.
+#
+# Placeholder convention (corpus-wide): <your-instance-url>, <your-env>,
+# <your-username>. Replace each <...> with your cohort's real value.
+
+instance:
+  url:   <your-instance-url>        # e.g. https://<host>/<instance>
+  host:  <your-instance-host>       # the host portion of the URL
+  name:  <your-instance-name>       # the instance path segment
+  stage: DEV                        # bootstrap is DEV-gated (fail-closed)
+
+env:
+  name:  <your-env>                 # the `cl env` key, <system>:<stage> (e.g. acme:dev)
+
+distribution:
+  org:               hanuele                # GitHub org hosting the repos
+  cli_repo:          crossloom-cli
+  marketplace_repo:  crossloom-marketplace
+
+per_dev:                            # each dev supplies these at install time
+  username:  <your-username>        # -> cl env add … --user
+  principal: "Your Name"            # -> cl-quality config set-principal

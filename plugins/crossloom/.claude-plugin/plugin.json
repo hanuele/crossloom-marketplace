@@ -1,0 +1,8 @@
+{
+  "name": "crossloom",
+  "description": "CrossLoom integration-platform toolkit for external 3TXpert developers. Bundles the CrossLoom MCP server (actions on a live instance), three auto-firing Skills (ObjectType cheat-sheets, first-contact orientation, and first-run connection/env setup), and a SessionStart hook that injects the always-on CrossLoom conventions. Requires Python and the crossloom-cli wheel — see the marketplace README.",
+  "version": "0.4.0",
+  "author": {
+    "name": "hanuele"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "//": "Managed-settings snippet to push to an external dev's machine to enable SILENT auto-update of the CrossLoom plugin. Place in the ClaudeCode managed-settings file (Windows: C:\\Program Files\\ClaudeCode\\managed-settings.json). MERGE the extraKnownMarketplaces key if the file already holds other managed settings. See docs/AUTO-UPDATE.md.",
+  "//source": "Use the explicit url + .git form, NOT the github+repo shorthand: the shorthand resolves to an SSH clone on a fresh Windows machine with no GitHub SSH key and dies on 'Host key verification failed' (verified task #249, 2026-07-07). The .git clone URL keeps the marketplace's relative plugin source resolving.",
+  "extraKnownMarketplaces": {
+    "crossloom": {
+      "source": { "source": "url", "url": "https://github.com/hanuele/crossloom-marketplace.git" },
+      "autoUpdate": true
+    }
+  }
+}

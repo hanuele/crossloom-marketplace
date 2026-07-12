@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "crossloom": {
+      "command": "cl",
+      "args": ["mcp", "serve"]
+    }
+  }
+}

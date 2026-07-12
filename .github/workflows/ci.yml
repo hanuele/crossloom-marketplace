@@ -1,0 +1,94 @@
+# CI for the CrossLoom Claude Code plugin marketplace (#285).
+#
+# This repo had NO CI until now. That was tolerable while it shipped only Skills
+# and config; it stopped being tolerable once it started shipping the ObjectType
+# knowledge corpus, because that corpus is a MIRROR of the crossloom-cli wheel and
+# a mirror with no guard rots by construction. "Remember to re-run the sync before
+# releasing" is a human-memory dependency, and human memory is the thing this whole
+# plan exists to route around.
+#
+# Everything here runs WITHOUT access to the private crossloom-cli repo — the
+# mirror is verified against the manifest that ships beside it. The other half of
+# the guard (mirror vs the wheel's authored sheets) lives in crossloom-cli's own
+# test suite, which has both trees on disk.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The knowledge mirror: every sheet matches its manifest hash, every sheet
+      # is routed by the dispatcher, no unmanifested file was hand-added.
+      - name: Verify the vendored knowledge mirror
+        run: python scripts/verify_knowledge_mirror.py
+
+      # The plugin's own JSON must parse. A malformed marketplace.json or
+      # plugin.json does not fail loudly at install time — it fails as a plugin
+      # that silently never loads, which is the worst failure shape available to
+      # an auto-updating distribution channel.
+      - name: Validate plugin JSON
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          failed = False
+          for rel in [".claude-plugin/marketplace.json",
+                      "plugins/crossloom/.claude-plugin/plugin.json",
+                      "plugins/crossloom/.mcp.json",
+                      "plugins/crossloom/compat.json"]:
+              p = Path(rel)
+              if not p.is_file():
+                  print(f"FAIL: {rel} is missing", file=sys.stderr)
+                  failed = True
+                  continue
+              try:
+                  json.loads(p.read_text(encoding="utf-8"))
+              except json.JSONDecodeError as e:
+                  print(f"FAIL: {rel} is not valid JSON: {e}", file=sys.stderr)
+                  failed = True
+              else:
+                  print(f"OK: {rel}")
+          sys.exit(1 if failed else 0)
+          PY
+
+      # The marketplace's declared plugin version and the plugin's own manifest
+      # must agree. They are two files a human edits by hand at release time, and
+      # a mismatch means auto-update either never fires or fires on a lie.
+      - name: Plugin version agrees with the marketplace entry
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          market = json.loads(
+              Path(".claude-plugin/marketplace.json").read_text(encoding="utf-8"))
+          plugin = json.loads(
+              Path("plugins/crossloom/.claude-plugin/plugin.json").read_text(
+                  encoding="utf-8"))
+          entries = [p for p in market.get("plugins", []) if p.get("name") == "crossloom"]
+          if not entries:
+              print("FAIL: no 'crossloom' entry in marketplace.json", file=sys.stderr)
+              sys.exit(1)
+          declared, actual = entries[0].get("version"), plugin.get("version")
+          if declared != actual:
+              print(
+                  f"FAIL: marketplace.json says version {declared!r} but "
+                  f"plugin.json says {actual!r} — auto-update keys off the "
+                  "marketplace entry, so a stale one means the fix never ships.",
+                  file=sys.stderr)
+              sys.exit(1)
+          print(f"OK: plugin version {actual} agrees across both manifests")
+          PY
