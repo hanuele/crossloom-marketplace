@@ -37,9 +37,39 @@
   client over hand-building the POST.
 - **History is automatic** — every save versions the SQL (see `cl diff <uuid>`);
   no need to restore the original after a scratch query.
-- **Scratchpad discipline**: shared test lookups exist (`Claudes Test Lookup`
-  `fff0c798-2e39-4bf8-bf82-366016a65475`) — `cl query` uses one under the hood.
-  Don't repurpose production lookups as scratchpads.
+- **`cl query` puts your SQL INTO the corpus before running it.** The SQL is
+  written to a scratchpad lookup's `ViewDef` and executed from there, so a search
+  over lookup CODE columns (`ViewDef`, `UpdateDef`, `InsertDef`, `ReplicationDef`)
+  can match **its own stored text**. Scanning for a string makes that string part
+  of what you are scanning: the extra hit is real data, indistinguishable from a
+  genuine one, and it inflates refactoring impact counts. It is worst in an
+  aggregate — `SELECT COUNT(*) ... WHERE ViewDef LIKE '%X%'` folds the phantom
+  into the number, where no row is visible to notice. Split the search literal so
+  the stored copy cannot match itself intact (SQL Server folds `'a' + 'b'` to
+  `'ab'`, so the predicate is unchanged):
+
+  ```sql
+  -- self-matching:
+  WHERE ViewDef LIKE '%zParkComp_WindfarmSegment%'
+  -- safe:
+  WHERE ViewDef LIKE '%zParkComp_Windfarm' + 'Segment%'
+  ```
+
+  Searching `Title` or `Description` is unaffected — those columns are never
+  written by the query gateway.
+- **Scratchpad discipline**: `cl query` runs through a test lookup under the
+  hood. **The scratchpad's UUID is instance- and caller-specific — do not
+  hardcode one.** Sessions are given their own scratchpad row (titled
+  `x_<label>_<id>_TestLookup`) so concurrent callers do not overwrite each
+  other's SQL, and a shared fallback row exists alongside them. Discover what
+  is on YOUR instance rather than copying an id from documentation:
+
+  ```sql
+  SELECT ID, Title FROM ttx_LookUps WITH (NOLOCK) WHERE Title LIKE '%TestLookup%'
+  ```
+
+  Use that list if you need an exclude-set for the gotcha above. Don't repurpose
+  production lookups as scratchpads.
 - Full live column set: `ID, Title, Description, ViewDef, UpdateDef, InsertDef,
   Created, LastUpdate, ParentID, ReplicationDef, RequiredRole, cmdTimeout,
   ConnectionID, PermissionID, ServiceName, AppID, TargetID`.
