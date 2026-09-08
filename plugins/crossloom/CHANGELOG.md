@@ -1,5 +1,30 @@
 # Changelog — crossloom plugin
 
+## 0.4.1 — 2026-09-08
+
+**Wheel floor unchanged (`min_cl_version` = `0.5.3`).** Configuration-only release.
+
+- **`.mcp.json` launches `python -m crossloom_cli.mcp.server` again, not `cl mcp serve`.**
+  This reverses 0.4.0's launcher choice, on purpose and with its cost named. On Windows
+  `cl` is `cl.exe`, and Windows will not let pip replace a running executable: while any
+  Claude Code session has the plugin loaded, reinstalling or upgrading `crossloom-cli`
+  dies on `[WinError 32]` (measured 2026-09-08, five live `cl mcp serve` processes), and
+  the 0.6.1 `cl update` worker waits until every session has exited. `python.exe` is not
+  part of the wheel, so launching through it keeps every file pip must replace unlocked.
+
+  **Cost:** macOS has no `python` binary, so the MCP server fails there until one is on
+  PATH. The README's install line already assumes `python`; a Mac installed via
+  `python3 -m pip` needs a `python` shim. `python3` stays wrong on Windows (0-byte Store
+  stub). A cross-platform launcher that is neither an `.exe` nor an interpreter name is
+  the tracked follow-up; this release ships the Windows fix rather than wait for it.
+
+  **Unchanged:** a server that outlives a package swap still needs a session restart —
+  the lock is gone, the swept-out-`.py` hazard is not.
+
+- **No behaviour change for `cl` as a human CLI**, and the SessionStart hooks keep
+  their `$(command -v python || command -v python3)` resolution — that path never
+  spawned `cl.exe` and never held the lock.
+
 ## 0.4.0 — 2026-07-12
 
 **Wheel floor RAISED to `0.5.3`** — this release needs `cl mcp serve` (crossloom-cli #279).
