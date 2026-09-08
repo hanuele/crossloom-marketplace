@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "crossloom": {
-      "command": "cl",
-      "args": ["mcp", "serve"]
+      "command": "python",
+      "args": ["-m", "crossloom_cli.mcp.server"]
     }
   }
 }

@@ -88,12 +88,28 @@ output *is* the pass; an `ImportError` traceback is the failure. The third is th
 catches the most common silent failure: `crossloom-cli` installed **without `[ai]`**, so the
 CLI works while the MCP server is dead.
 
-> **Why the plugin no longer names an interpreter.** `.mcp.json` spawns **`cl mcp serve`**,
-> not `python -m …`. `cl` is a pip-baked console script, so it always runs the Python that
-> actually has the wheel — which is correct by construction, on every platform and on
-> machines with several Pythons. (Naming `python` broke macOS entirely, where no such
-> binary exists; naming `python3` breaks Windows, where it resolves to a 0-byte Store stub.
-> There is no interpreter name that is right on both, so the plugin names none.)
+> **Why the plugin launches through `python` (0.4.1).** `.mcp.json` spawns
+> **`python -m crossloom_cli.mcp.server`**, not `cl mcp serve`. Plugin 0.4.0 had switched
+> *to* `cl` — a pip-baked console script always runs the Python that has the wheel — and
+> 0.4.1 reverses that knowingly, because on Windows `cl` is `cl.exe`, and **a running
+> executable cannot be replaced**. While *any* Claude Code session has the plugin loaded,
+> `cl.exe` is running, so `pip install` of a new wheel dies on `[WinError 32]` and 0.6.1's
+> `cl update` worker waits until every session is closed (measured 2026-09-08 with five
+> live `cl mcp serve` processes). `python.exe` is not part of the wheel, so launching
+> through it leaves every file pip must replace unlocked.
+>
+> **The cost, stated plainly — macOS.** macOS ships no `python` binary (Apple removed it
+> in 12.3; Homebrew does not put an unversioned one on PATH), so on a Mac the MCP server
+> fails to start until a `python` is on PATH. The install command above already assumes
+> one (`python -m pip …`), so a Mac that completed Step 1 has it; a Mac that used
+> `python3 -m pip` needs a `python` shim (e.g. `ln -s "$(command -v python3)"
+> /usr/local/bin/python`). `python3` is **not** the fix: on Windows it resolves to a 0-byte
+> Microsoft-Store stub. A launcher that is neither an `.exe` nor an interpreter name is the
+> tracked follow-up.
+>
+> **What this does NOT change:** a session whose server outlives a package swap still
+> needs a **restart** — the `.py` files under a live server can still be swept out from
+> under it, and retrying the tool does not recover it.
 
 ## Install — three steps
 
