@@ -88,24 +88,31 @@ output *is* the pass; an `ImportError` traceback is the failure. The third is th
 catches the most common silent failure: `crossloom-cli` installed **without `[ai]`**, so the
 CLI works while the MCP server is dead.
 
-> **Why the plugin launches through `python` (0.4.1).** `.mcp.json` spawns
-> **`python -m crossloom_cli.mcp.server`**, not `cl mcp serve`. Plugin 0.4.0 had switched
-> *to* `cl` — a pip-baked console script always runs the Python that has the wheel — and
-> 0.4.1 reverses that knowingly, because on Windows `cl` is `cl.exe`, and **a running
-> executable cannot be replaced**. While *any* Claude Code session has the plugin loaded,
-> `cl.exe` is running, so `pip install` of a new wheel dies on `[WinError 32]` and 0.6.1's
-> `cl update` worker waits until every session is closed (measured 2026-09-08 with five
-> live `cl mcp serve` processes). `python.exe` is not part of the wheel, so launching
-> through it leaves every file pip must replace unlocked.
+> **Why the plugin launches through `cl-mcp.cmd` (0.5.0).** `.mcp.json` spawns
+> **`${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp.cmd`** — a small polyglot file that cmd.exe runs as a
+> batch script on Windows and sh runs as a shell script on macOS/Linux. It tries
+> interpreters in order (Windows: `python`, `py -3`, `python3`; Unix: `python3`, `python`)
+> and starts `crossloom_cli.mcp.server` under the **first one that can `import
+> crossloom_cli`**. Validation by import, never by name. Two earlier launchers each solved
+> one platform and broke the other:
 >
-> **The cost, stated plainly — macOS.** macOS ships no `python` binary (Apple removed it
-> in 12.3; Homebrew does not put an unversioned one on PATH), so on a Mac the MCP server
-> fails to start until a `python` is on PATH. The install command above already assumes
-> one (`python -m pip …`), so a Mac that completed Step 1 has it; a Mac that used
-> `python3 -m pip` needs a `python` shim (e.g. `ln -s "$(command -v python3)"
-> /usr/local/bin/python`). `python3` is **not** the fix: on Windows it resolves to a 0-byte
-> Microsoft-Store stub. A launcher that is neither an `.exe` nor an interpreter name is the
-> tracked follow-up.
+> - **`cl mcp serve` (0.4.0)** worked on macOS but on Windows `cl` is `cl.exe`, and **a
+>   running executable cannot be replaced**: while any session had the plugin loaded,
+>   `pip install` of a new wheel died on `[WinError 32]` and 0.6.1's `cl update` worker
+>   waited until every session closed (measured 2026-09-08, five live servers).
+> - **`python -m …` (0.4.1)** fixed the lock — `python.exe` is not part of the wheel — but
+>   **macOS ships no `python`** (Apple removed it in 12.3; Homebrew adds none), so on a
+>   Mac the server did not start until someone shimmed one.
+>
+> The launcher keeps the 0.4.1 property (the server runs under an interpreter, never under
+> `cl.exe`) and drops its cost (no interpreter *name* is assumed). Measured 2026-09-22 on
+> Windows in an isolated venv, with the negative control armed: `cl.exe mcp serve` running
+> → reinstall refused with `[WinError 32]`; the launcher's server running → reinstall
+> exit 0. `python3` on Windows (a 0-byte Microsoft-Store stub) fails the import and is
+> skipped (simulated: no `python`, a stub `python3`, the server came up via `py -3`).
+> **The macOS half has not been run on a real Mac** — it is parsed and exercised under
+> Git Bash only; if you are the first Mac user, `command -v python3` and a wheel install
+> are all it needs, and a report either way is welcome.
 >
 > **What this does NOT change:** a session whose server outlives a package swap still
 > needs a **restart** — the `.py` files under a live server can still be swept out from

@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "crossloom": {
-      "command": "python",
-      "args": ["-m", "crossloom_cli.mcp.server"]
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp.cmd",
+      "args": []
     }
   }
 }
