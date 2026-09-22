@@ -42,8 +42,14 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
 2. **The `cl` wheel — installed with the `[ai]` extra:**
 
    ```
-   python -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.1"
+   python  -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.1"   # Windows
+   python3 -m pip install --upgrade "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git@v0.6.1"   # macOS / Linux
    ```
+
+   Two spellings, one rule: **use the interpreter name your OS actually has.** Windows has
+   `python` (its `python3` is a 0-byte Microsoft-Store stub); macOS has `python3` and no
+   `python`. The plugin's launcher does not care which one you used — it finds the wheel by
+   import, not by name (see the box below the install steps).
 
    **The `[ai]` extra is required** — it pulls the MCP SDK (`mcp`, `fastmcp`) that the
    server imports at startup. A plain `crossloom-cli` install gives you a working CLI and a
@@ -79,7 +85,7 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
 
 ```
 cl --version                      # the wheel's console entry point is on PATH (want >= 0.6.1)
-python -c "import crossloom_cli"  # the package is importable
+python -c "import crossloom_cli"  # the package is importable      (macOS / Linux: python3 -c …)
 python -c "import mcp, fastmcp"   # the [ai] extra is present — the MCP SDK the server needs
 ```
 
@@ -110,9 +116,13 @@ CLI works while the MCP server is dead.
 > → reinstall refused with `[WinError 32]`; the launcher's server running → reinstall
 > exit 0. `python3` on Windows (a 0-byte Microsoft-Store stub) fails the import and is
 > skipped (simulated: no `python`, a stub `python3`, the server came up via `py -3`).
-> **The macOS half has not been run on a real Mac** — it is parsed and exercised under
-> Git Bash only; if you are the first Mac user, `command -v python3` and a wheel install
-> are all it needs, and a report either way is welcome.
+> Claude Code itself was measured connecting to the launcher on Windows (`claude mcp list`
+> → Connected) and leaving no orphaned server behind on teardown. The file carries a real
+> `#!/bin/sh` on line 1, so macOS runs it as an ordinary executable script (Node's
+> `posix_spawn` would not fall back to `/bin/sh` for a shebang-less file). **The macOS half
+> has not been run on a real Mac** — it is parsed (`sh -n`) and exercised under Git Bash
+> only; if you are the first Mac user, `python3 -m pip install …` (above) is all it needs,
+> and a report either way is welcome.
 >
 > **What this does NOT change:** a session whose server outlives a package swap still
 > needs a **restart** — the `.py` files under a live server can still be swept out from

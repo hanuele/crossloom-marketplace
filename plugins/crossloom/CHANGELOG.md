@@ -7,8 +7,12 @@ follow-up that 0.4.1 named (#900389).
 
 - **`.mcp.json` launches `${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp.cmd`** — a polyglot launcher that
   is neither an `.exe` nor an interpreter name. cmd.exe runs its batch half on Windows; sh
-  runs its shell half on macOS/Linux (the first line is a label to cmd and a heredoc to sh,
-  the pattern the official `superpowers` plugin ships as `run-hook.cmd`). It tries
+  runs its shell half on macOS/Linux. Line 1 is a real `#!/bin/sh` (Node spawns MCP
+  commands with `posix_spawn` on macOS, which does **not** fall back to `/bin/sh` for a
+  shebang-less file — so unlike the `superpowers` `run-hook.cmd` pattern this file keeps the
+  shebang and pays for it on Windows with one echoed stdout line, which the MCP client
+  tolerates: `claude mcp list` → Connected, measured 2026-09-22). Line 2 is a label to cmd
+  and a heredoc to sh that swallows the batch half. It tries
   interpreters in order — Windows `python`, `py -3`, `python3`; Unix `python3`, `python` —
   and takes the **first one that can `import crossloom_cli`**. Validation by import, never
   by name: the Windows `python3` Store stub fails the import and is skipped; a `python`
@@ -22,15 +26,18 @@ follow-up that 0.4.1 named (#900389).
   launcher's server running (child verified as the venv's `python.exe`) → the same reinstall
   **exit 0**. The Windows `python3`-is-a-stub case was simulated the same day (PATH with no
   `python`, a stub `python3` that exits like the Store one, the real `py` launcher): the
-  stub was skipped and the server came up under `py -3`. Claude Code spawns a `.cmd` as an
-  MCP `command` on Windows (measured 2026-09-08, #900389) and the docs' own plugin example
-  uses `${CLAUDE_PLUGIN_ROOT}` in `command`.
+  stub was skipped and the server came up under `py -3`. Claude Code spawns this `.cmd` as
+  an MCP `command` on Windows (`claude mcp list` → Connected, 2026-09-22; first measured
+  2026-09-08, #900389) and the docs' own plugin example uses `${CLAUDE_PLUGIN_ROOT}` in
+  `command`. The batch half tests `%ERRORLEVEL% equ 0`, not `if not errorlevel 1`, because
+  the latter also accepts a *negative* code such as an interpreter crash.
 
   **One property of any wrapper, measured and named:** the interpreter is a *grandchild*
   of Claude Code (`cmd.exe` → `python.exe`), as it was under 0.4.0's `cl.exe`. Closing the
   server's stdin ends it within ~2 s; killing only the `cmd.exe` while the pipe stays open
-  leaves the interpreter running. Which of the two Claude Code does on a mid-session
-  reconnect was not measured; on session exit the pipe closes and the server ends.
+  leaves the interpreter running. Claude Code's own teardown after `claude mcp list` left
+  **no** orphan (measured 2026-09-22); a mid-session `/mcp` reconnect was not measured; on
+  session exit the pipe closes and the server ends.
 
   **Not measured — stated, not inferred:** the macOS half has not been run on a real Mac
   (no host was reachable); it is parsed by `sh -n` and exercised under Git Bash on Windows
