@@ -10,8 +10,8 @@ follow-up that 0.4.1 named (#900389).
   runs its shell half on macOS/Linux. Line 1 is a real `#!/bin/sh` (Node spawns MCP
   commands with `posix_spawn` on macOS, which does **not** fall back to `/bin/sh` for a
   shebang-less file — so unlike the `superpowers` `run-hook.cmd` pattern this file keeps the
-  shebang and pays for it on Windows with one echoed stdout line, which the MCP client
-  tolerates: `claude mcp list` → Connected, measured 2026-09-22). Line 2 is a label to cmd
+  shebang and pays for it on Windows with two non-JSON stdout lines (an empty line and the
+  echoed prompt) before the first JSON-RPC message, which the MCP client tolerates: `claude mcp list` → Connected, measured 2026-09-22). Line 2 is a label to cmd
   and a heredoc to sh that swallows the batch half. It tries
   interpreters in order — Windows `python`, `py -3`, `python3`; Unix `python3`, `python` —
   and takes the **first one that can `import crossloom_cli`**. Validation by import, never

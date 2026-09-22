@@ -6,9 +6,10 @@ REM
 REM Line 1 is a real shebang so macOS/Linux exec this file directly (Node's
 REM posix_spawn does NOT fall back to /bin/sh on ENOEXEC, so a shebang-less
 REM script would silently never start there). cmd.exe cannot run line 1: it
-REM echoes it to stdout once and reports it on stderr, then continues -- the
-REM MCP client tolerates that one stray line (measured with `claude mcp list`
-REM on Windows, 2026-09-22: Connected). Line 2 is a label to cmd.exe (not
+REM writes two non-JSON lines to stdout (an empty line, then the echoed
+REM prompt) and one complaint to stderr, then continues -- the MCP client
+REM skips them (measured with `claude mcp list` on Windows, 2026-09-22:
+REM Connected; the stdio probe skips exactly 2 lines). Line 2 is a label to cmd.exe (not
 REM echoed, not executed) and a heredoc to sh that swallows this batch half.
 REM
 REM Why this file exists: the plugin must not launch cl.exe (Windows locks a

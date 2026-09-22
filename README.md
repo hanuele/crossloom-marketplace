@@ -86,7 +86,7 @@ The bundled MCP server is a **stdio Python process**: the plugin ships its *conf
 ```
 cl --version                      # the wheel's console entry point is on PATH (want >= 0.6.1)
 python -c "import crossloom_cli"  # the package is importable      (macOS / Linux: python3 -c …)
-python -c "import mcp, fastmcp"   # the [ai] extra is present — the MCP SDK the server needs
+python -c "import mcp, fastmcp"   # the [ai] extra is present — the MCP SDK the server needs (macOS / Linux: python3 -c …)
 ```
 
 All three should succeed. The second and third print **nothing** and exit 0 on success — no
@@ -127,6 +127,12 @@ CLI works while the MCP server is dead.
 > **What this does NOT change:** a session whose server outlives a package swap still
 > needs a **restart** — the `.py` files under a live server can still be swept out from
 > under it, and retrying the tool does not recover it.
+>
+> **Windows, expected noise:** cmd.exe cannot run the launcher's `#!/bin/sh` line, so the
+> server's stdout begins with **two** non-JSON lines (an empty line and the echoed prompt)
+> before the first JSON-RPC message, and stderr carries one "not recognized" complaint. The
+> MCP client skips them (measured: Connected). If a future Claude Code ever rejects a
+> non-JSON preamble, this is the line to come back to.
 
 ## Install — three steps
 
