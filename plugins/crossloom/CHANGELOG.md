@@ -40,8 +40,10 @@ follow-up that 0.4.1 named (#900389).
   session exit the pipe closes and the server ends.
 
   **Not measured — stated, not inferred:** the macOS half has not been run on a real Mac
-  (no host was reachable); it is parsed by `sh -n` and exercised under Git Bash on Windows
-  only. A Mac whose `python3` is Apple's Xcode-CLT stub will be prompted to install the
+  (no host was reachable). It was exec'd directly — no shell, no ENOEXEC fallback — on a
+  Linux host (Python `subprocess.run([path])`): `sh -n` clean, the shell half ran to its
+  honest "no interpreter can import crossloom_cli" exit 1 because that host has no wheel.
+  So the shebang, exec bit and shell half are proven on POSIX; Apple's `posix_spawn` is not. A Mac whose `python3` is Apple's Xcode-CLT stub will be prompted to install the
   developer tools by the import probe — a machine that installed the wheel has a real one.
 
 - **`.gitattributes` pins `*.cmd` to LF** — cmd.exe mis-seeks labels in LF-only files

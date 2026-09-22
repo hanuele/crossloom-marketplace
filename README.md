@@ -119,9 +119,9 @@ CLI works while the MCP server is dead.
 > Claude Code itself was measured connecting to the launcher on Windows (`claude mcp list`
 > → Connected) and leaving no orphaned server behind on teardown. The file carries a real
 > `#!/bin/sh` on line 1, so macOS runs it as an ordinary executable script (Node's
-> `posix_spawn` would not fall back to `/bin/sh` for a shebang-less file). **The macOS half
-> has not been run on a real Mac** — it is parsed (`sh -n`) and exercised under Git Bash
-> only; if you are the first Mac user, `python3 -m pip install …` (above) is all it needs,
+> `posix_spawn` would not fall back to `/bin/sh` for a shebang-less file). The file was
+> exec'd directly on a Linux host (no shell, no fallback) and its shell half ran. **The
+> macOS half has not been run on a real Mac** — Linux and Git Bash are the proxies; if you are the first Mac user, `python3 -m pip install …` (above) is all it needs,
 > and a report either way is welcome.
 >
 > **What this does NOT change:** a session whose server outlives a package swap still
