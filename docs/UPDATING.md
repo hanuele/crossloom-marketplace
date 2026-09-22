@@ -49,7 +49,7 @@ Draw the line at *"is this text, or is this code?"*:
 - **The 3 Skills** — `objects` (the ObjectType dispatcher), `orient` (first contact),
   `connect` (first-run env setup).
 - **`CONVENTIONS.md`** — injected into every session by a SessionStart hook.
-- **`.mcp.json`** — the MCP server *registration* (`python -m crossloom_cli.mcp.server` since plugin 0.4.1; `cl mcp serve` before). This is **wiring, not
+- **`.mcp.json`** — the MCP server *registration* (`${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp.cmd` since plugin 0.5.0 — a polyglot launcher that picks the first interpreter that can import the wheel; `python -m crossloom_cli.mcp.server` in 0.4.1; `cl mcp serve` before). This is **wiring, not
   capability**: it says how to launch the server, not what the server can do.
 - **`compat.json`** — `min_cl_version`, the minimum wheel version this plugin release needs.
 - **The hooks** — `emit_conventions.py`, `check_wheel_version.py`.

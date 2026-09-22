@@ -1,0 +1,3 @@
+# The polyglot MCP launcher is parsed by cmd.exe AND sh: it must stay LF-only
+# (cmd.exe mis-seeks labels in LF files, which is why it uses none; sh chokes on CR).
+*.cmd text eol=lf

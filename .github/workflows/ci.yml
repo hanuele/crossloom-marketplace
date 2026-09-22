@@ -64,6 +64,50 @@ jobs:
           sys.exit(1 if failed else 0)
           PY
 
+      # The MCP launcher is a polyglot parsed by cmd.exe AND sh (#900389). It must be
+      # LF-only (sh rejects CR; cmd.exe mis-seeks labels in LF files, so it uses none),
+      # start with a real #!/bin/sh (macOS execs it directly, no ENOEXEC fallback),
+      # parse under sh -n, be executable in the index (macOS/Linux run it directly after
+      # git clone), and be the file .mcp.json actually points at. A CRLF, shebang-less or
+      # mode-644 launcher does not fail loudly — it fails as a plugin whose MCP server
+      # silently never starts on the platform nobody here can test.
+      - name: MCP launcher is LF-only, shebanged, sh-parseable, executable, referenced
+        run: |
+          python - <<'PY'
+          import json, re, subprocess, sys
+          from pathlib import Path
+
+          launcher = Path("plugins/crossloom/bin/cl-mcp.cmd")
+          failed = False
+          if b"\r" in launcher.read_bytes():
+              print(f"FAIL: {launcher} contains CR bytes", file=sys.stderr); failed = True
+          if launcher.read_bytes().split(b"\n", 1)[0] != b"#!/bin/sh":
+              print(f"FAIL: {launcher} line 1 must be exactly '#!/bin/sh' (macOS execs it "
+                    "directly; posix_spawn has no ENOEXEC fallback)", file=sys.stderr)
+              failed = True
+          sh = subprocess.run(["sh", "-n", str(launcher)], capture_output=True, text=True)
+          if sh.returncode != 0:
+              print(f"FAIL: sh -n {launcher}: {sh.stderr.strip()}", file=sys.stderr); failed = True
+          mode = subprocess.run(["git", "ls-files", "-s", str(launcher)],
+                                capture_output=True, text=True).stdout.split()
+          if not mode or mode[0] != "100755":
+              print(f"FAIL: {launcher} index mode is {mode[:1]}, expected 100755",
+                    file=sys.stderr); failed = True
+          mcp = json.loads(Path("plugins/crossloom/.mcp.json").read_text(encoding="utf-8"))
+          cmd = mcp["mcpServers"]["crossloom"]["command"]
+          target = Path("plugins/crossloom") / cmd.replace("${CLAUDE_PLUGIN_ROOT}/", "")
+          if not cmd.startswith("${CLAUDE_PLUGIN_ROOT}/") or not target.is_file():
+              print(f"FAIL: .mcp.json command {cmd!r} does not resolve to a shipped file",
+                    file=sys.stderr); failed = True
+          code = [ln for ln in launcher.read_text(encoding="utf-8").splitlines()
+                  if not ln.lstrip().lower().startswith(("rem", "#", "::"))]
+          if any(re.search(r"\bgoto\b", ln, re.I) for ln in code):
+              print(f"FAIL: {launcher} uses goto (labels mis-seek in LF-only batch files)",
+                    file=sys.stderr); failed = True
+          print("OK" if not failed else "FAILED", "launcher checks")
+          sys.exit(1 if failed else 0)
+          PY
+
       # The marketplace's declared plugin version and the plugin's own manifest
       # must agree. They are two files a human edits by hand at release time, and
       # a mismatch means auto-update either never fires or fires on a lie.

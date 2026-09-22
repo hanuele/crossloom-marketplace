@@ -1,5 +1,57 @@
 # Changelog — crossloom plugin
 
+## 0.5.0 — 2026-09-22
+
+**Wheel floor unchanged (`min_cl_version` = `0.5.3`).** Launcher-only release; the tracked
+follow-up that 0.4.1 named (#900389).
+
+- **`.mcp.json` launches `${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp.cmd`** — a polyglot launcher that
+  is neither an `.exe` nor an interpreter name. cmd.exe runs its batch half on Windows; sh
+  runs its shell half on macOS/Linux. Line 1 is a real `#!/bin/sh` (Node spawns MCP
+  commands with `posix_spawn` on macOS, which does **not** fall back to `/bin/sh` for a
+  shebang-less file — so unlike the `superpowers` `run-hook.cmd` pattern this file keeps the
+  shebang and pays for it on Windows with two non-JSON stdout lines (an empty line and the
+  echoed prompt) before the first JSON-RPC message, which the MCP client tolerates: `claude mcp list` → Connected, measured 2026-09-22). Line 2 is a label to cmd
+  and a heredoc to sh that swallows the batch half. It tries
+  interpreters in order — Windows `python`, `py -3`, `python3`; Unix `python3`, `python` —
+  and takes the **first one that can `import crossloom_cli`**. Validation by import, never
+  by name: the Windows `python3` Store stub fails the import and is skipped; a `python`
+  without the wheel is skipped; `py -3` sits after `python` because it ignores an active venv.
+
+  **What this closes.** The 0.4.1 cost — *macOS has no `python`* — is gone: on a Mac the
+  Unix half finds `python3`. The 0.4.0 problem — the Windows exe lock — stays solved: the
+  server runs under `python.exe`, which is not part of the wheel. Measured 2026-09-22 on
+  Windows in an isolated venv, with an armed negative control: the wheel's own `cl.exe mcp
+  serve` running → `pip install --force-reinstall` **refused with `[WinError 32]`**; the
+  launcher's server running (child verified as the venv's `python.exe`) → the same reinstall
+  **exit 0**. The Windows `python3`-is-a-stub case was simulated the same day (PATH with no
+  `python`, a stub `python3` that exits like the Store one, the real `py` launcher): the
+  stub was skipped and the server came up under `py -3`. Claude Code spawns this `.cmd` as
+  an MCP `command` on Windows (`claude mcp list` → Connected, 2026-09-22; first measured
+  2026-09-08, #900389) and the docs' own plugin example uses `${CLAUDE_PLUGIN_ROOT}` in
+  `command`. The batch half tests `%ERRORLEVEL% equ 0`, not `if not errorlevel 1`, because
+  the latter also accepts a *negative* code such as an interpreter crash.
+
+  **One property of any wrapper, measured and named:** the interpreter is a *grandchild*
+  of Claude Code (`cmd.exe` → `python.exe`), as it was under 0.4.0's `cl.exe`. Closing the
+  server's stdin ends it within ~2 s; killing only the `cmd.exe` while the pipe stays open
+  leaves the interpreter running. Claude Code's own teardown after `claude mcp list` left
+  **no** orphan (measured 2026-09-22); a mid-session `/mcp` reconnect was not measured; on
+  session exit the pipe closes and the server ends.
+
+  **Not measured — stated, not inferred:** the macOS half has not been run on a real Mac
+  (no host was reachable). It was exec'd directly — no shell, no ENOEXEC fallback — on a
+  Linux host (Python `subprocess.run([path])`): `sh -n` clean, the shell half ran to its
+  honest "no interpreter can import crossloom_cli" exit 1 because that host has no wheel.
+  So the shebang, exec bit and shell half are proven on POSIX; Apple's `posix_spawn` is not. A Mac whose `python3` is Apple's Xcode-CLT stub will be prompted to install the
+  developer tools by the import probe — a machine that installed the wheel has a real one.
+
+- **`.gitattributes` pins `*.cmd` to LF** — cmd.exe mis-seeks labels in LF-only files
+  (which is why the launcher uses no `goto`), and sh rejects CR. Both halves need LF.
+
+- **Unchanged:** a server that outlives a package swap still needs a session restart. The
+  SessionStart hooks keep their own `$(command -v python || command -v python3)` resolution.
+
 ## 0.4.1 — 2026-09-08
 
 **Wheel floor unchanged (`min_cl_version` = `0.5.3`).** Configuration-only release.
