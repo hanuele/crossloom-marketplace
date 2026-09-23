@@ -1,0 +1,18 @@
+#!/bin/sh
+# cl-mcp -- macOS/Linux half of the crossloom MCP launcher (#900389, split in #900531).
+#
+# .mcp.json names "${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp" with NO extension: a Unix
+# kernel execs this file via its shebang (Node's posix_spawn has no ENOEXEC
+# fallback to /bin/sh, so line 1 must stay exactly #!/bin/sh and the index mode
+# 100755); Windows resolves the same bare name through PATHEXT to the sibling
+# cl-mcp.cmd. Keep this file LF-only (sh rejects CR; CI asserts it).
+
+# Unix (macOS / Linux). macOS ships no `python`, so python3 goes first;
+# both are validated by import, never taken on name alone.
+for py in python3 python; do
+    if command -v "$py" >/dev/null 2>&1 && "$py" -c 'import crossloom_cli' >/dev/null 2>&1; then
+        exec "$py" -m crossloom_cli.mcp.server "$@"
+    fi
+done
+echo 'cl-mcp: no interpreter can import crossloom_cli (tried python3, python). Install the wheel: python3 -m pip install "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git"' >&2
+exit 1

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "crossloom": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp.cmd",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp",
       "args": []
     }
   }

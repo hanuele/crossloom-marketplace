@@ -1,5 +1,34 @@
 # Changelog — crossloom plugin
 
+## 0.5.1 — 2026-09-23
+
+**Wheel floor unchanged (`min_cl_version` = `0.5.3`).** Launcher packaging only (#900531);
+the interpreter-selection logic is byte-identical to 0.5.0.
+
+- **`.mcp.json` launches `${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp` — no extension — backed by two
+  files.** `bin/cl-mcp.cmd` holds only the batch half (line 1 `@echo off`, no shebang);
+  `bin/cl-mcp` holds only the shell half (`#!/bin/sh`, mode 100755). Windows resolves the
+  bare name through `PATHEXT` to the `.cmd`; a Unix kernel execs the shebanged file. This
+  is nao's pattern *one extensionless command name, two platform-specific files* (mycelium
+  `cross-project:pattern:extensionless-command-resolves-per-platform`, measured 2026-09-08
+  on Windows and Linux), which 0.5.0 re-derived a lesser shape of.
+- **Why 0.5.0's polyglot is retired.** One file had to satisfy both parsers, so its line 1
+  was `#!/bin/sh` — which cmd.exe cannot run, so the server's stdout began with two
+  non-JSON lines before the first JSON-RPC message. Claude Code skipped them, but that is
+  undocumented client leniency (the PR #9 reviewer's one residual risk): if stdio framing
+  ever tightens, the failure is a server that silently never starts, and no CI check
+  would see it. The split removes the preamble instead of depending on the leniency.
+- **Measured 2026-09-23** (Claude Code 2.1.280, Windows): extensionless user-scope
+  registration → `claude mcp list` → Connected; with instrumented copies of both files
+  side by side only the `.cmd` half ran; the stdio handshake probe on `cl-mcp.cmd`
+  skipped **0** non-JSON lines (0.5.0's file, same probe: 2). On a Linux host `bin/cl-mcp`
+  was exec'd with no shell and its shell half ran. macOS not run on a real Mac.
+- **CI** now asserts both files: `cl-mcp.cmd` LF-only, CR-free, goto-free, no shebang;
+  `cl-mcp` line 1 exactly `#!/bin/sh`, CR-free, `sh -n` clean, index mode 100755; and
+  `.mcp.json`'s command is exactly `${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp` with `bin/cl-mcp.cmd`
+  beside it. `.gitattributes` pins `bin/cl-mcp` to LF (a `core.autocrlf=true` checkout
+  would otherwise give the shell half CRLF).
+
 ## 0.5.0 — 2026-09-22
 
 **Wheel floor unchanged (`min_cl_version` = `0.5.3`).** Launcher-only release; the tracked

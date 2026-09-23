@@ -94,9 +94,11 @@ output *is* the pass; an `ImportError` traceback is the failure. The third is th
 catches the most common silent failure: `crossloom-cli` installed **without `[ai]`**, so the
 CLI works while the MCP server is dead.
 
-> **Why the plugin launches through `cl-mcp.cmd` (0.5.0).** `.mcp.json` spawns
-> **`${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp.cmd`** — a small polyglot file that cmd.exe runs as a
-> batch script on Windows and sh runs as a shell script on macOS/Linux. It tries
+> **Why the plugin launches through `bin/cl-mcp` (0.5.1).** `.mcp.json` spawns
+> **`${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp`** — one command name with **no extension**, backed by
+> two small files: `bin/cl-mcp.cmd` (a batch script) and `bin/cl-mcp` (a `#!/bin/sh`
+> script, executable). On Windows the bare name resolves through `PATHEXT` to
+> `cl-mcp.cmd`; on macOS/Linux the kernel execs `cl-mcp` via its shebang. Either half tries
 > interpreters in order (Windows: `python`, `py -3`, `python3`; Unix: `python3`, `python`)
 > and starts `crossloom_cli.mcp.server` under the **first one that can `import
 > crossloom_cli`**. Validation by import, never by name. Two earlier launchers each solved
@@ -116,23 +118,31 @@ CLI works while the MCP server is dead.
 > → reinstall refused with `[WinError 32]`; the launcher's server running → reinstall
 > exit 0. `python3` on Windows (a 0-byte Microsoft-Store stub) fails the import and is
 > skipped (simulated: no `python`, a stub `python3`, the server came up via `py -3`).
-> Claude Code itself was measured connecting to the launcher on Windows (`claude mcp list`
-> → Connected) and leaving no orphaned server behind on teardown. The file carries a real
-> `#!/bin/sh` on line 1, so macOS runs it as an ordinary executable script (Node's
-> `posix_spawn` would not fall back to `/bin/sh` for a shebang-less file). The file was
-> exec'd directly on a Linux host (no shell, no fallback) and its shell half ran. **The
-> macOS half has not been run on a real Mac** — Linux and Git Bash are the proxies; if you are the first Mac user, `python3 -m pip install …` (above) is all it needs,
-> and a report either way is welcome.
+>
+> **Why two files and not one (0.5.0 shipped one).** 0.5.0 used a single polyglot
+> `cl-mcp.cmd` that both cmd.exe and sh could read. Its line 1 had to be `#!/bin/sh`, which
+> cmd.exe cannot run, so on Windows the server's stdout began with two non-JSON lines
+> before the first JSON-RPC message. Claude Code tolerated that, but nothing documents that
+> it must — and if a future client stopped tolerating it, the failure would be a server
+> that silently never starts. 0.5.1 splits the file, so `cl-mcp.cmd` has no shebang and
+> its stdout starts with JSON. Measured 2026-09-23 on Windows with Claude Code 2.1.280: an
+> extensionless user-scope registration → `claude mcp list` → Connected; with instrumented
+> copies of both files side by side, only the `.cmd` half ran; the stdio handshake probe
+> on `cl-mcp.cmd` skipped **0** non-JSON lines (the 0.5.0 file, same probe: 2). `bin/cl-mcp`
+> was exec'd directly on a Linux host (no shell, no fallback) and its shell half ran.
+> **The macOS half has not been run on a real Mac** — Linux and Git Bash are the proxies; if
+> you are the first Mac user, `python3 -m pip install …` (above) is all it needs, and a
+> report either way is welcome.
 >
 > **What this does NOT change:** a session whose server outlives a package swap still
 > needs a **restart** — the `.py` files under a live server can still be swept out from
 > under it, and retrying the tool does not recover it.
 >
-> **Windows, expected noise:** cmd.exe cannot run the launcher's `#!/bin/sh` line, so the
-> server's stdout begins with **two** non-JSON lines (an empty line and the echoed prompt)
-> before the first JSON-RPC message, and stderr carries one "not recognized" complaint. The
-> MCP client skips them (measured: Connected). If a future Claude Code ever rejects a
-> non-JSON preamble, this is the line to come back to.
+> **Windows, no launcher noise any more (0.5.1).** Up to 0.5.0 the server's stdout began
+> with an empty line and an echoed `#!/bin/sh` prompt, and stderr carried a "not
+> recognized" complaint. From 0.5.1 neither appears. If you still see them, the plugin
+> cache holds 0.5.0: update the marketplace and restart the session (see
+> [docs/UPDATING.md](docs/UPDATING.md)).
 
 ## Install — three steps
 

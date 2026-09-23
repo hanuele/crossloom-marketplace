@@ -1,3 +1,6 @@
-# The polyglot MCP launcher is parsed by cmd.exe AND sh: it must stay LF-only
-# (cmd.exe mis-seeks labels in LF files, which is why it uses none; sh chokes on CR).
+# The MCP launcher is two files behind one extensionless name (#900531): cl-mcp.cmd
+# (cmd.exe; LF-only, which is why it uses no labels -- cmd.exe mis-seeks them in LF files)
+# and cl-mcp (#!/bin/sh; sh chokes on CR). core.autocrlf=true on a Windows checkout would
+# otherwise give the extensionless file CRLF, so it is pinned by name.
 *.cmd text eol=lf
+plugins/crossloom/bin/cl-mcp text eol=lf

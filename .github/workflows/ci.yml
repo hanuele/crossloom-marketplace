@@ -64,46 +64,87 @@ jobs:
           sys.exit(1 if failed else 0)
           PY
 
-      # The MCP launcher is a polyglot parsed by cmd.exe AND sh (#900389). It must be
-      # LF-only (sh rejects CR; cmd.exe mis-seeks labels in LF files, so it uses none),
-      # start with a real #!/bin/sh (macOS execs it directly, no ENOEXEC fallback),
-      # parse under sh -n, be executable in the index (macOS/Linux run it directly after
-      # git clone), and be the file .mcp.json actually points at. A CRLF, shebang-less or
-      # mode-644 launcher does not fail loudly — it fails as a plugin whose MCP server
-      # silently never starts on the platform nobody here can test.
-      - name: MCP launcher is LF-only, shebanged, sh-parseable, executable, referenced
+      # The MCP launcher is ONE extensionless command name backed by TWO files (#900531,
+      # nao's extensionless-command-resolves-per-platform pattern): .mcp.json names
+      # ${CLAUDE_PLUGIN_ROOT}/bin/cl-mcp; Windows resolves that through PATHEXT to
+      # bin/cl-mcp.cmd, a Unix kernel execs bin/cl-mcp via its shebang.
+      #   cl-mcp.cmd: LF-only (sh is not involved, but cmd.exe mis-seeks labels in LF
+      #     files, so it uses no goto), NO shebang (a #! line is exactly what made 0.5.0
+      #     print two non-JSON stdout lines before the first JSON-RPC message).
+      #   cl-mcp: line 1 exactly #!/bin/sh (posix_spawn has no ENOEXEC fallback), CR-free,
+      #     sh -n clean, index mode 100755.
+      # A broken launcher does not fail loudly — it fails as a plugin whose MCP server
+      # silently never starts on one platform.
+      - name: MCP launcher pair (cl-mcp + cl-mcp.cmd) is well-formed and referenced
         run: |
           python - <<'PY'
           import json, re, subprocess, sys
           from pathlib import Path
 
-          launcher = Path("plugins/crossloom/bin/cl-mcp.cmd")
+          bindir = Path("plugins/crossloom/bin")
+          sh_launcher, cmd_launcher = bindir / "cl-mcp", bindir / "cl-mcp.cmd"
           failed = False
-          if b"\r" in launcher.read_bytes():
-              print(f"FAIL: {launcher} contains CR bytes", file=sys.stderr); failed = True
-          if launcher.read_bytes().split(b"\n", 1)[0] != b"#!/bin/sh":
-              print(f"FAIL: {launcher} line 1 must be exactly '#!/bin/sh' (macOS execs it "
-                    "directly; posix_spawn has no ENOEXEC fallback)", file=sys.stderr)
+
+          def fail(msg):
+              global failed
+              print(f"FAIL: {msg}", file=sys.stderr)
               failed = True
-          sh = subprocess.run(["sh", "-n", str(launcher)], capture_output=True, text=True)
+
+          def index_mode(path):
+              out = subprocess.run(["git", "ls-files", "-s", str(path)],
+                                   capture_output=True, text=True).stdout.split()
+              return out[0] if out else None
+
+          for f in (sh_launcher, cmd_launcher):
+              if not f.is_file():
+                  fail(f"{f} is missing")
+          if failed:
+              print("FAILED launcher checks"); sys.exit(1)
+
+          # --- cl-mcp.cmd: the Windows half ---
+          cb = cmd_launcher.read_bytes()
+          if b"\r" in cb:
+              fail(f"{cmd_launcher} contains CR bytes (must be LF-only)")
+          if cb.startswith(b"#!"):
+              fail(f"{cmd_launcher} starts with a shebang; cmd.exe would echo it to stdout "
+                   "ahead of the first JSON-RPC message (the 0.5.0 preamble)")
+          if cb.split(b"\n", 1)[0].strip().lower() != b"@echo off":
+              fail(f"{cmd_launcher} line 1 must be '@echo off'")
+          code = [ln for ln in cb.decode("utf-8").splitlines()
+                  if not ln.lstrip().lower().startswith(("rem", "::"))]
+          if any(re.search(r"\bgoto\b", ln, re.I) for ln in code):
+              fail(f"{cmd_launcher} uses goto (labels mis-seek in LF-only batch files)")
+
+          # --- cl-mcp: the macOS/Linux half ---
+          sb = sh_launcher.read_bytes()
+          if b"\r" in sb:
+              fail(f"{sh_launcher} contains CR bytes (sh rejects CR)")
+          if sb.split(b"\n", 1)[0] != b"#!/bin/sh":
+              fail(f"{sh_launcher} line 1 must be exactly '#!/bin/sh' (posix_spawn has "
+                   "no ENOEXEC fallback)")
+          sh = subprocess.run(["sh", "-n", str(sh_launcher)], capture_output=True, text=True)
           if sh.returncode != 0:
-              print(f"FAIL: sh -n {launcher}: {sh.stderr.strip()}", file=sys.stderr); failed = True
-          mode = subprocess.run(["git", "ls-files", "-s", str(launcher)],
-                                capture_output=True, text=True).stdout.split()
-          if not mode or mode[0] != "100755":
-              print(f"FAIL: {launcher} index mode is {mode[:1]}, expected 100755",
-                    file=sys.stderr); failed = True
+              fail(f"sh -n {sh_launcher}: {sh.stderr.strip()}")
+          if index_mode(sh_launcher) != "100755":
+              fail(f"{sh_launcher} index mode is {index_mode(sh_launcher)}, expected 100755")
+
+          # --- .mcp.json names the extensionless pair ---
           mcp = json.loads(Path("plugins/crossloom/.mcp.json").read_text(encoding="utf-8"))
           cmd = mcp["mcpServers"]["crossloom"]["command"]
+          # EXPECTED is built by concatenation: a literal dollar-double-brace would be
+          # evaluated by GitHub Actions as an expression before Python ever sees it.
+          EXPECTED = "$" + "{CLAUDE_PLUGIN_ROOT}/bin/cl-mcp"
+          if cmd != EXPECTED:
+              fail(f".mcp.json command is {cmd!r}, expected " + repr(EXPECTED) + " "
+                   "(extensionless: PATHEXT picks cl-mcp.cmd on Windows, the kernel execs "
+                   "cl-mcp elsewhere)")
           target = Path("plugins/crossloom") / cmd.replace("${CLAUDE_PLUGIN_ROOT}/", "")
-          if not cmd.startswith("${CLAUDE_PLUGIN_ROOT}/") or not target.is_file():
-              print(f"FAIL: .mcp.json command {cmd!r} does not resolve to a shipped file",
-                    file=sys.stderr); failed = True
-          code = [ln for ln in launcher.read_text(encoding="utf-8").splitlines()
-                  if not ln.lstrip().lower().startswith(("rem", "#", "::"))]
-          if any(re.search(r"\bgoto\b", ln, re.I) for ln in code):
-              print(f"FAIL: {launcher} uses goto (labels mis-seek in LF-only batch files)",
-                    file=sys.stderr); failed = True
+          if not target.is_file() or not target.with_name(target.name + ".cmd").is_file():
+              fail(f".mcp.json command {cmd!r} does not resolve to bin/cl-mcp with "
+                   "bin/cl-mcp.cmd beside it")
+          if mcp["mcpServers"]["crossloom"].get("args", []) != []:
+              fail(".mcp.json args must be []")
+
           print("OK" if not failed else "FAILED", "launcher checks")
           sys.exit(1 if failed else 0)
           PY
