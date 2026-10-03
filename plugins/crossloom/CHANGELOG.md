@@ -1,5 +1,13 @@
 # Changelog — crossloom plugin
 
+## 0.5.3 — 2026-10-03
+
+**Wheel floor unchanged (`min_cl_version` = `1.0.0`).** Knowledge-mirror sync only.
+
+- `skills/objects/knowledge/ttx_Lookups.md` re-synced from crossloom-cli (gh crossloom-cli#369): the
+  self-match SQL examples now use a neutral table name instead of a customer table. The example's
+  point — split the `LIKE` literal with `+` so the query cannot match its own stored text — is unchanged.
+
 ## 0.5.2 — 2026-10-03
 
 **Wheel floor raised: `min_cl_version` `0.5.3` → `1.0.0`.** No Skill, hook or MCP-wiring change;
