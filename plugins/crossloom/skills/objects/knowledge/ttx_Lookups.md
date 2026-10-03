@@ -50,9 +50,9 @@
 
   ```sql
   -- self-matching:
-  WHERE ViewDef LIKE '%zParkComp_WindfarmSegment%'
+  WHERE ViewDef LIKE '%zExample_WidgetSegment%'
   -- safe:
-  WHERE ViewDef LIKE '%zParkComp_Windfarm' + 'Segment%'
+  WHERE ViewDef LIKE '%zExample_Widget' + 'Segment%'
   ```
 
   Searching `Title` or `Description` is unaffected — those columns are never
