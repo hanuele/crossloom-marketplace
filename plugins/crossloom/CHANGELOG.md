@@ -1,5 +1,21 @@
 # Changelog — crossloom plugin
 
+## 0.5.2 — 2026-10-03
+
+**Wheel floor raised: `min_cl_version` `0.5.3` → `1.0.0`.** No Skill, hook or MCP-wiring change;
+the floor moves so the SessionStart `check_wheel_version.py` nudge reaches every developer still on
+an older wheel. crossloom-cli 1.0.0 carries the 2026-10-03 code-review fixes, among them:
+
+- browser session state is saved only to the per-user config dir, owner-only (gh crossloom-cli#343);
+- expired sessions renew when the server answers with its HTML login page (#345), and
+  `save_object` verification detects silently dropped rows (#344);
+- atomic, owner-only credential writes and locked `environments.yaml` changes (#354);
+- a single fail-closed stage gate for write flows, and a live JIT compile gate on
+  `deploy_trusted_script` (#352);
+- values interpolated into SQL are validated or escaped (#353).
+
+`cl update` fixes the nudge.
+
 ## 0.5.1 — 2026-09-23
 
 **Wheel floor unchanged (`min_cl_version` = `0.5.3`).** Launcher packaging only (#900531);
