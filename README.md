@@ -256,3 +256,7 @@ change, not a rebuild — keep the repo name and internal structure stable.
 ---
 
 *Part of the CrossLoom External-Dev Onboarding plan (one-plugin distribution).*
+
+## Also in this marketplace: `crossloom-env`
+
+A small second plugin (needs Claude Code 2.1.291 or later) that shows the active CrossLoom environment under the prompt and asks before a write verb runs on an environment you mark as protected. Install with `/plugin install crossloom-env --marketplace hanuele/crossloom-marketplace`; details in [`plugins/crossloom-env/README.md`](./plugins/crossloom-env/README.md).
