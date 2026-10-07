@@ -1,6 +1,6 @@
 {
   "name": "crossloom-env",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shows the active CrossLoom environment (cl env show) under the prompt, toasts when it changes, and asks before a crossloom write verb runs on a protected environment.",
   "author": {
     "name": "hanuele"
@@ -12,5 +12,6 @@
       "description": "Comma-separated system:stage names (e.g. mwm:dev,wiam-3T:prod) on which a crossloom write verb asks for confirmation first. Empty: never asks; the status line still shows the active environment.",
       "default": ""
     }
-  }
+  },
+  "types": "./types/index.d.ts"
 }
