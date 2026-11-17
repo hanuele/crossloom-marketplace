@@ -3,7 +3,7 @@
 
 The launcher picks the first interpreter that can import crossloom_cli: python3, then
 python, then the interpreter named by the shebang of the `cl` file on PATH (symlinks
-followed). These tests run it against stub interpreters in temp dirs, with a PATH that
+followed: reading a link reads its target). These tests run it against stub interpreters in temp dirs, with a PATH that
 holds only the stubs and the few tools the launcher needs, so no real Python and no
 network install is involved.
 
@@ -24,8 +24,8 @@ import unittest
 from pathlib import Path
 
 LAUNCHER = Path(__file__).resolve().parent.parent / "plugins" / "crossloom" / "bin" / "cl-mcp"
-# The launcher needs only sh builtins plus readlink; keep everything else off PATH.
-TOOLS = ("readlink",)
+# The launcher needs only sh builtins; nothing else goes on PATH.
+TOOLS: tuple[str, ...] = ()
 
 
 def _write_exec(path: Path, text: str) -> Path:
@@ -84,6 +84,12 @@ class ClMcpLauncherTest(unittest.TestCase):
         self.assertEqual(r.stdout, "STUB python3 -m crossloom_cli.mcp.server --x y z\n")
         self.assertEqual(r.stderr, "")
 
+    def test_a_python3_tried_before_python(self) -> None:
+        stub_interpreter(self.bin / "python3", has_module=True)
+        stub_interpreter(self.bin / "python", has_module=True)
+        r = self.run_launcher()
+        self.assertEqual(r.stdout, "STUB python3 -m crossloom_cli.mcp.server\n")
+
     def test_a_python_used_when_python3_lacks_module(self) -> None:
         stub_interpreter(self.bin / "python3", has_module=False)
         stub_interpreter(self.bin / "python", has_module=True)
@@ -136,9 +142,7 @@ class ClMcpLauncherTest(unittest.TestCase):
         self.assertIn("the interpreter behind cl: none found", r.stderr)
 
     def test_c_symlink_loop_is_not_taken(self) -> None:
-        # `command -v` already skips a looping link, so this does NOT reach the
-        # launcher's 40-hop bound (a mutant removing it survives); the bound is
-        # defence in depth only.
+        # `command -v` skips a looping link, so the launcher never reads it.
         (self.bin / "cl").symlink_to("cl2")
         (self.bin / "cl2").symlink_to("cl")
         r = self.run_launcher()

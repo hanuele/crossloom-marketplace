@@ -6,15 +6,17 @@
 
 - **`bin/cl-mcp` falls back to the interpreter behind `cl`.** When neither `python3` nor
   `python` can import `crossloom_cli` (crossloom-cli installed in its own virtualenv, with only
-  `cl` on PATH, often as a symlink into the venv), the launcher now follows `command -v cl`
-  through its symlinks, reads that file's shebang (`#!/path/python` or `#!/usr/bin/env <name>`),
+  `cl` on PATH, often as a symlink into the venv), the launcher now reads the shebang of
+  `command -v cl` (through any symlinks; `#!/path/python` or `#!/usr/bin/env [opts] <name>`)
   and execs that interpreter if it passes the same import probe. The order is unchanged:
   python3, python, then the `cl` interpreter. The error now names the third candidate.
+  Known limit: pip's two-line `#!/bin/sh` header for very long venv paths is not parsed;
+  the launcher then errors out naming `/bin/sh`.
 - **`bin/cl-mcp.cmd` is unchanged.** On Windows `cl` is a pip `cl.exe` launcher, not a script
   with a readable shebang line, so this fallback does not carry over as written.
 - CI runs `scripts/test_cl_mcp_launcher.py`: stub interpreters in temp dirs cover the system
-  python winning, the venv fallback (absolute, `env` form, CRLF shebang, relative symlink
-  chain), and the exit-1 error with nothing on stdout.
+  python winning (python3 before python), the venv fallback (absolute, `env` form, CRLF
+  shebang, relative symlink chain), and the exit-1 error with nothing on stdout.
 
 ## 0.5.3 — 2026-10-03
 

@@ -21,25 +21,12 @@ done
 # Third candidate (#601299): the interpreter behind `cl`. When crossloom-cli lives
 # in its own virtualenv and only its `cl` entry point is on PATH (often a symlink
 # into the venv), neither python3 nor python can import the wheel, but the
-# shebang of the real `cl` file names an interpreter that can. Follow the
-# symlinks, read that shebang (`#!/path/python` or `#!/usr/bin/env <name>`), and
-# take the interpreter only if it passes the same import probe.
-
-# Prints the file a path finally points at (relative links resolved against the
-# link's own directory; at most 40 hops, so a loop cannot hang the launcher).
-cl_mcp_follow() {
-    f=$1
-    hops=0
-    while [ -L "$f" ] && [ "$hops" -lt 40 ]; do
-        t=$(readlink "$f") || break
-        case $t in
-            /*) f=$t ;;
-            *) f=${f%/*}/$t ;;
-        esac
-        hops=$((hops + 1))
-    done
-    printf '%s\n' "$f"
-}
+# shebang of the real `cl` file names an interpreter that can. Read that shebang
+# through any symlinks (opening the link reads its target), accept
+# `#!/path/python` or `#!/usr/bin/env [opts] <name>`, and take the interpreter
+# only if it passes the same import probe. Known limit: pip writes a two-line
+# `#!/bin/sh` + `'''exec' <python>` header for very long venv paths; that form
+# is not parsed, and /bin/sh fails the probe, so the launcher errors out safely.
 
 # Prints the interpreter a shebang line names, or nothing. Called with the line
 # minus its "#!"; its own positional parameters are the line's words.
@@ -72,9 +59,8 @@ cl_interp=
 cl_path=$(command -v cl 2>/dev/null) || cl_path=
 case $cl_path in
     /*)
-        cl_file=$(cl_mcp_follow "$cl_path")
-        if [ -f "$cl_file" ] && [ -r "$cl_file" ]; then
-            IFS= read -r cl_line <"$cl_file" || [ -n "$cl_line" ] || cl_line=
+        if [ -f "$cl_path" ] && [ -r "$cl_path" ]; then
+            IFS= read -r cl_line <"$cl_path" || [ -n "$cl_line" ] || cl_line=
             cl_cr=$(printf '\r')
             cl_line=${cl_line%"$cl_cr"}
             case $cl_line in
