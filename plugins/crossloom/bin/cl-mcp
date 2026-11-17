@@ -6,6 +6,9 @@
 # fallback to /bin/sh, so line 1 must stay exactly #!/bin/sh and the index mode
 # 100755); Windows resolves the same bare name through PATHEXT to the sibling
 # cl-mcp.cmd. Keep this file LF-only (sh rejects CR; CI asserts it).
+#
+# stdout belongs to the MCP server: nothing here may print to it before exec.
+# Tests: scripts/test_cl_mcp_launcher.py.
 
 # Unix (macOS / Linux). macOS ships no `python`, so python3 goes first;
 # both are validated by import, never taken on name alone.
@@ -14,5 +17,65 @@ for py in python3 python; do
         exec "$py" -m crossloom_cli.mcp.server "$@"
     fi
 done
-echo 'cl-mcp: no interpreter can import crossloom_cli (tried python3, python). Install the wheel: python3 -m pip install "crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git"' >&2
+
+# Third candidate (#601299): the interpreter behind `cl`. When crossloom-cli lives
+# in its own virtualenv and only its `cl` entry point is on PATH (often a symlink
+# into the venv), neither python3 nor python can import the wheel, but the
+# shebang of the real `cl` file names an interpreter that can. Read that shebang
+# through any symlinks (opening the link reads its target), accept
+# `#!/path/python` or `#!/usr/bin/env [opts] <name>`, and take the interpreter
+# only if it passes the same import probe. Known limit: pip writes a two-line
+# `#!/bin/sh` + `'''exec' <python>` header for very long venv paths; that form
+# is not parsed, and /bin/sh fails the probe, so the launcher errors out safely.
+
+# Prints the interpreter a shebang line names, or nothing. Called with the line
+# minus its "#!"; its own positional parameters are the line's words.
+cl_mcp_shebang_interp() {
+    set -f
+    # shellcheck disable=SC2086  # word splitting is the point here
+    set -- $1
+    set +f
+    [ $# -ge 1 ] || return 0
+    case ${1##*/} in
+        env)
+            shift
+            # skip env's options (e.g. -S) and NAME=value assignments
+            while [ $# -ge 1 ]; do
+                case $1 in
+                    -*|*=*) shift ;;
+                    *) break ;;
+                esac
+            done
+            [ $# -ge 1 ] || return 0
+            command -v "$1" 2>/dev/null
+            ;;
+        *)
+            printf '%s\n' "$1"
+            ;;
+    esac
+}
+
+cl_interp=
+cl_path=$(command -v cl 2>/dev/null) || cl_path=
+case $cl_path in
+    /*)
+        if [ -f "$cl_path" ] && [ -r "$cl_path" ]; then
+            IFS= read -r cl_line <"$cl_path" || [ -n "$cl_line" ] || cl_line=
+            cl_cr=$(printf '\r')
+            cl_line=${cl_line%"$cl_cr"}
+            case $cl_line in
+                '#!'*) cl_interp=$(cl_mcp_shebang_interp "${cl_line#??}") ;;
+            esac
+        fi
+        ;;
+esac
+case $cl_interp in
+    /*)
+        if [ -x "$cl_interp" ] && "$cl_interp" -c 'import crossloom_cli' >/dev/null 2>&1; then
+            exec "$cl_interp" -m crossloom_cli.mcp.server "$@"
+        fi
+        ;;
+esac
+
+echo "cl-mcp: no interpreter can import crossloom_cli (tried python3, python, the interpreter behind cl: ${cl_interp:-none found}). Install the wheel: python3 -m pip install \"crossloom-cli[ai] @ git+https://github.com/hanuele/crossloom-cli.git\"" >&2
 exit 1

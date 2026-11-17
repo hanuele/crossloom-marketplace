@@ -149,6 +149,13 @@ jobs:
           sys.exit(1 if failed else 0)
           PY
 
+      # What the launcher DOES, not only its shape (#601299): python3, then python, then
+      # the interpreter behind `cl` (venv installs), each taken only if it imports
+      # crossloom_cli; otherwise exit 1 with nothing on stdout. Stub interpreters in
+      # temp dirs, no real install.
+      - name: MCP launcher (cl-mcp) picks the right interpreter
+        run: python scripts/test_cl_mcp_launcher.py
+
       # The marketplace's declared plugin version and the plugin's own manifest
       # must agree. They are two files a human edits by hand at release time, and
       # a mismatch means auto-update either never fires or fires on a lie.
