@@ -135,7 +135,10 @@ class ClMcpLauncherTest(unittest.TestCase):
         self.assertEqual(r.stdout, "")
         self.assertIn("the interpreter behind cl: none found", r.stderr)
 
-    def test_c_symlink_loop_does_not_hang(self) -> None:
+    def test_c_symlink_loop_is_not_taken(self) -> None:
+        # `command -v` already skips a looping link, so this does NOT reach the
+        # launcher's 40-hop bound (a mutant removing it survives); the bound is
+        # defence in depth only.
         (self.bin / "cl").symlink_to("cl2")
         (self.bin / "cl2").symlink_to("cl")
         r = self.run_launcher()
