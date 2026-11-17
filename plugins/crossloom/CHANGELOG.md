@@ -1,5 +1,21 @@
 # Changelog — crossloom plugin
 
+## 0.5.4 — 2026-11-17
+
+**Wheel floor unchanged (`min_cl_version` = `1.0.0`).** macOS/Linux launcher only (#601299).
+
+- **`bin/cl-mcp` falls back to the interpreter behind `cl`.** When neither `python3` nor
+  `python` can import `crossloom_cli` (crossloom-cli installed in its own virtualenv, with only
+  `cl` on PATH, often as a symlink into the venv), the launcher now follows `command -v cl`
+  through its symlinks, reads that file's shebang (`#!/path/python` or `#!/usr/bin/env <name>`),
+  and execs that interpreter if it passes the same import probe. The order is unchanged:
+  python3, python, then the `cl` interpreter. The error now names the third candidate.
+- **`bin/cl-mcp.cmd` is unchanged.** On Windows `cl` is a pip `cl.exe` launcher, not a script
+  with a readable shebang line, so this fallback does not carry over as written.
+- CI runs `scripts/test_cl_mcp_launcher.py`: stub interpreters in temp dirs cover the system
+  python winning, the venv fallback (absolute, `env` form, CRLF shebang, relative symlink
+  chain), and the exit-1 error with nothing on stdout.
+
 ## 0.5.3 — 2026-10-03
 
 **Wheel floor unchanged (`min_cl_version` = `1.0.0`).** Knowledge-mirror sync only.
